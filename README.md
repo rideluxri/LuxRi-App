@@ -53,3 +53,4 @@ as plain text fields instead of autocompleting.
 - Text/SMS buttons (notify chauffeur, confirm ride, referral invite) still
   use the "tap to send" pattern — they open the phone's Messages app
   pre-filled rather than sending silently, same as before.
+
