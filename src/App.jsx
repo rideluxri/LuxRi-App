@@ -63,11 +63,16 @@ const VEHICLES = {
 
 const STEPS = ["Route", "Vehicle", "Details", "Confirm"];
 
+const AIRPORT_FLAT_MILE_CAP = 10;
+
 function estimateFare(tripType, vehicleKey, miles) {
   const v = VEHICLES[vehicleKey];
   if (!v) return 0;
-  if (tripType === "airport") return v.airport;
   const m = Number(miles) || 0;
+  if (tripType === "airport") {
+    if (m > AIRPORT_FLAT_MILE_CAP) return v.base + m * v.perMile;
+    return v.airport;
+  }
   const oneWay = v.base + m * v.perMile;
   return tripType === "round" ? oneWay * 2 - v.base * 0.5 : oneWay;
 }
@@ -437,7 +442,6 @@ export default function LuxRiBooking() {
   }, []);
 
   useEffect(() => {
-    if (tripType === "airport") return;
     const estimate = estimateDrivingMiles(pickupCoords, dropoffCoords);
     if (estimate != null) {
       setMiles(String(estimate));
@@ -1862,25 +1866,28 @@ export default function LuxRiBooking() {
                     {tripType === "airport" && (
                       <Field icon={<Plane size={16} />} placeholder="Flight number" value={flight} onChange={setFlight} />
                     )}
-                    {tripType !== "airport" && (
-                      <div className="space-y-1">
-                        <Field
-                          icon={<Car size={16} />}
-                          placeholder="Estimated miles"
-                          value={miles}
-                          onChange={(v) => {
-                            setMiles(v);
-                            setMilesAuto(false);
-                          }}
-                          type="number"
-                        />
-                        {milesAuto && (
-                          <div className="text-[11px]" style={{ color: C.faint }}>
-                            Auto-estimated from your addresses — edit if needed.
-                          </div>
-                        )}
-                      </div>
-                    )}
+                    <div className="space-y-1">
+                      <Field
+                        icon={<Car size={16} />}
+                        placeholder="Estimated miles"
+                        value={miles}
+                        onChange={(v) => {
+                          setMiles(v);
+                          setMilesAuto(false);
+                        }}
+                        type="number"
+                      />
+                      {milesAuto && (
+                        <div className="text-[11px]" style={{ color: C.faint }}>
+                          Auto-estimated from your addresses — edit if needed.
+                        </div>
+                      )}
+                      {tripType === "airport" && (
+                        <div className="text-[11px]" style={{ color: C.faint }}>
+                          Flat rate applies up to {AIRPORT_FLAT_MILE_CAP} miles; beyond that, standard per-mile pricing applies.
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
