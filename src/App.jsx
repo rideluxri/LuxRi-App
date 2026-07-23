@@ -363,6 +363,7 @@ export default function LuxRiBooking() {
   const [lookupBooking, setLookupBooking] = useState(null);
   const [lookupBusy, setLookupBusy] = useState(false);
   const [rescheduling, setRescheduling] = useState(false);
+  const [pendingAssignedDriver, setPendingAssignedDriver] = useState("");
 
   const fare = vehicle ? estimateFare(tripType, vehicle, miles) : 0;
   const nonCancelledRides = history.filter((h) => h.status !== "cancelled").length;
@@ -964,7 +965,7 @@ export default function LuxRiBooking() {
       passengers,
       luggage,
       fare,
-      assignedDriverEmail: "",
+      assignedDriverEmail: rescheduling ? pendingAssignedDriver : "",
       business: account?.business || "",
       referredBy: account?.referredBy || "",
       discountType,
@@ -1032,7 +1033,9 @@ export default function LuxRiBooking() {
   };
 
   const enterReschedule = (b) => {
-    if (minutesUntilPickup(b) < CANCEL_CUTOFF_MINUTES) return;
+    const minsLeft = minutesUntilPickup(b);
+    if (minsLeft < 0) return; // pickup time has already passed
+    setPendingAssignedDriver(b.assignedDriverEmail || "");
     setTripType(b.tripType);
     setPickup(b.pickup);
     setDropoff(b.dropoff);
@@ -1681,24 +1684,13 @@ export default function LuxRiBooking() {
                 )}
                 <div className="text-[11px] tracking-wide" style={{ color: C.faintest }}>{r.code}</div>
                 {r.status !== "cancelled" && r.status !== "completed" && (
-                  minutesUntilPickup(r) < CANCEL_CUTOFF_MINUTES ? (
-                    <div className="space-y-1.5 pt-1">
-                      <div className="text-[11px]" style={{ color: C.faint }}>
-                        Rescheduling isn't available within 1 hour of pickup.
-                      </div>
+                  <div className="space-y-1.5 pt-1">
+                    {minutesUntilPickup(r) < CANCEL_CUTOFF_MINUTES && (
                       <div className="text-[11px]" style={{ color: C.error }}>
-                        Cancelling now incurs a {LATE_CANCEL_FEE_PCT}% fee.
+                        Within 1 hour of pickup — cancelling now incurs a {LATE_CANCEL_FEE_PCT}% fee. Rescheduling is still free.
                       </div>
-                      <button
-                        onClick={() => cancelBooking(r)}
-                        className="w-full py-2 rounded-sm text-xs border"
-                        style={{ borderColor: C.error, color: C.error }}
-                      >
-                        Cancel Ride
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex gap-2 pt-1">
+                    )}
+                    <div className="flex gap-2">
                       <button
                         onClick={() => enterReschedule(r)}
                         className="flex-1 py-2 rounded-sm text-xs border"
@@ -1714,7 +1706,7 @@ export default function LuxRiBooking() {
                         Cancel Ride
                       </button>
                     </div>
-                  )
+                  </div>
                 )}
                 {r.status === "completed" && !r.feedbackRating && (
                   <FeedbackForm
@@ -1795,24 +1787,13 @@ export default function LuxRiBooking() {
                   Total ${Number(lookupBooking.total ?? lookupBooking.fare).toFixed(0)}
                 </div>
                 {lookupBooking.status !== "cancelled" && lookupBooking.status !== "completed" && (
-                  minutesUntilPickup(lookupBooking) < CANCEL_CUTOFF_MINUTES ? (
-                    <div className="space-y-1.5 pt-1">
-                      <div className="text-[11px]" style={{ color: C.faint }}>
-                        Rescheduling isn't available within 1 hour of pickup.
-                      </div>
+                  <div className="space-y-1.5 pt-1">
+                    {minutesUntilPickup(lookupBooking) < CANCEL_CUTOFF_MINUTES && (
                       <div className="text-[11px]" style={{ color: C.error }}>
-                        Cancelling now incurs a {LATE_CANCEL_FEE_PCT}% fee.
+                        Within 1 hour of pickup — cancelling now incurs a {LATE_CANCEL_FEE_PCT}% fee. Rescheduling is still free.
                       </div>
-                      <button
-                        onClick={() => cancelBooking(lookupBooking, setLookupBooking)}
-                        className="w-full py-2 rounded-sm text-xs border"
-                        style={{ borderColor: C.error, color: C.error }}
-                      >
-                        Cancel Ride
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex gap-2 pt-1">
+                    )}
+                    <div className="flex gap-2">
                       <button
                         onClick={() => enterReschedule(lookupBooking)}
                         className="flex-1 py-2 rounded-sm text-xs border"
@@ -1828,7 +1809,7 @@ export default function LuxRiBooking() {
                         Cancel Ride
                       </button>
                     </div>
-                  )
+                  </div>
                 )}
                 {lookupBooking.status === "completed" && !lookupBooking.feedbackRating && (
                   <FeedbackForm booking={lookupBooking} theme={C} onSubmitted={setLookupBooking} />
