@@ -45,8 +45,8 @@ const VEHICLES = {
     seats: 4,
     color: "#E6C875",
     dark: "#2A2311",
-    base: 10,
-    perMile: 3.5,
+    base: 12,
+    perMile: 4,
     airport: 40,
   },
   x7: {
@@ -55,8 +55,8 @@ const VEHICLES = {
     seats: 6,
     color: "#B8912F",
     dark: "#221A08",
-    base: 15,
-    perMile: 4.5,
+    base: 17,
+    perMile: 5.25,
     airport: 55,
   },
 };
