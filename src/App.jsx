@@ -8,6 +8,7 @@ const BUFFER_MINUTES = 30;
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DEFAULT_HOURS = { days: [0, 1, 2, 3, 4, 5, 6], start: "00:00", end: "23:59", blockedDates: [] };
 const CANCEL_CUTOFF_MINUTES = 60;
+const LATE_CANCEL_FEE_PCT = 25;
 const LOYALTY_EVERY = 5;
 const REFERRAL_PCT = 20;
 const FIRST_RIDE_PCT = 15;
@@ -1099,9 +1100,19 @@ export default function LuxRiBooking() {
   };
 
   const cancelBooking = async (b, onDone) => {
-    if (minutesUntilPickup(b) < CANCEL_CUTOFF_MINUTES) return;
+    const minsLeft = minutesUntilPickup(b);
+    if (minsLeft < 0) return; // pickup time has already passed
+    const isLate = minsLeft < CANCEL_CUTOFF_MINUTES;
+    const fareAmount = Number(b.total ?? b.fare) || 0;
+    const fee = isLate ? Math.round(fareAmount * (LATE_CANCEL_FEE_PCT / 100) * 100) / 100 : 0;
+    if (isLate) {
+      const ok = window.confirm(
+        `You're cancelling within ${CANCEL_CUTOFF_MINUTES} minutes of pickup. A cancellation fee of $${fee.toFixed(2)} (${LATE_CANCEL_FEE_PCT}% of the fare) applies. Continue?`
+      );
+      if (!ok) return;
+    }
     try {
-      const updated = { ...b, status: "cancelled" };
+      const updated = { ...b, status: "cancelled", lateCancellation: isLate, cancellationFee: fee };
       await storage.set(`booking:${b.code}`, JSON.stringify(updated));
       if (account) {
         const newHistory = history.map((h) => (h.code === b.code ? updated : h));
@@ -1459,6 +1470,11 @@ export default function LuxRiBooking() {
                       {b.feedbackRating && (
                         <div className="text-xs" style={{ color: C.gold }}>Rated {b.feedbackRating}/5{b.feedbackComment ? ` — "${b.feedbackComment}"` : ""}</div>
                       )}
+                      {b.status === "cancelled" && b.lateCancellation && (
+                        <div className="text-xs" style={{ color: C.error }}>
+                          Late cancellation — ${Number(b.cancellationFee || 0).toFixed(2)} fee applies
+                        </div>
+                      )}
                     </div>
                     <span
                       className="text-[10px] uppercase tracking-wide px-2 py-1 rounded-sm shrink-0 border"
@@ -1658,11 +1674,28 @@ export default function LuxRiBooking() {
                   {r.tripType === "round" && r.returnDate ? ` · return ${r.returnDate} ${r.returnTime}` : ""}
                 </div>
                 <div className="text-xs" style={{ color: C.mutedDark }}>Total ${Number(r.total ?? r.fare).toFixed(0)}</div>
+                {r.status === "cancelled" && r.lateCancellation && (
+                  <div className="text-xs" style={{ color: C.error }}>
+                    Late cancellation fee: ${Number(r.cancellationFee || 0).toFixed(2)}
+                  </div>
+                )}
                 <div className="text-[11px] tracking-wide" style={{ color: C.faintest }}>{r.code}</div>
                 {r.status !== "cancelled" && r.status !== "completed" && (
                   minutesUntilPickup(r) < CANCEL_CUTOFF_MINUTES ? (
-                    <div className="text-[11px] pt-1" style={{ color: C.faint }}>
-                      Changes must be made at least 1 hour before pickup.
+                    <div className="space-y-1.5 pt-1">
+                      <div className="text-[11px]" style={{ color: C.faint }}>
+                        Rescheduling isn't available within 1 hour of pickup.
+                      </div>
+                      <div className="text-[11px]" style={{ color: C.error }}>
+                        Cancelling now incurs a {LATE_CANCEL_FEE_PCT}% fee.
+                      </div>
+                      <button
+                        onClick={() => cancelBooking(r)}
+                        className="w-full py-2 rounded-sm text-xs border"
+                        style={{ borderColor: C.error, color: C.error }}
+                      >
+                        Cancel Ride
+                      </button>
                     </div>
                   ) : (
                     <div className="flex gap-2 pt-1">
@@ -1763,8 +1796,20 @@ export default function LuxRiBooking() {
                 </div>
                 {lookupBooking.status !== "cancelled" && lookupBooking.status !== "completed" && (
                   minutesUntilPickup(lookupBooking) < CANCEL_CUTOFF_MINUTES ? (
-                    <div className="text-[11px] pt-1" style={{ color: C.faint }}>
-                      Changes must be made at least 1 hour before pickup.
+                    <div className="space-y-1.5 pt-1">
+                      <div className="text-[11px]" style={{ color: C.faint }}>
+                        Rescheduling isn't available within 1 hour of pickup.
+                      </div>
+                      <div className="text-[11px]" style={{ color: C.error }}>
+                        Cancelling now incurs a {LATE_CANCEL_FEE_PCT}% fee.
+                      </div>
+                      <button
+                        onClick={() => cancelBooking(lookupBooking, setLookupBooking)}
+                        className="w-full py-2 rounded-sm text-xs border"
+                        style={{ borderColor: C.error, color: C.error }}
+                      >
+                        Cancel Ride
+                      </button>
                     </div>
                   ) : (
                     <div className="flex gap-2 pt-1">
