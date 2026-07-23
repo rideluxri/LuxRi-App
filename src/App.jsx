@@ -93,6 +93,24 @@ function normBusiness(b) {
   return (b || "").trim().toLowerCase();
 }
 
+// Straight-line distance between two coordinates, adjusted upward to
+// roughly approximate real driving distance (roads aren't straight lines).
+// Good enough for a fare estimate without needing a separate, billed
+// Directions API call for every address pair someone types.
+const ROAD_DISTANCE_FACTOR = 1.3;
+function estimateDrivingMiles(a, b) {
+  if (!a || !b) return null;
+  const R = 3958.8; // Earth radius in miles
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  const straightLine = 2 * R * Math.asin(Math.sqrt(h));
+  return Math.round(straightLine * ROAD_DISTANCE_FACTOR * 10) / 10;
+}
+
 function timeToMinutes(t) {
   if (!t) return null;
   const [h, m] = t.split(":").map(Number);
@@ -303,6 +321,9 @@ export default function LuxRiBooking() {
   const [dropoff, setDropoff] = useState("");
   const [flight, setFlight] = useState("");
   const [miles, setMiles] = useState("");
+  const [pickupCoords, setPickupCoords] = useState(null);
+  const [dropoffCoords, setDropoffCoords] = useState(null);
+  const [milesAuto, setMilesAuto] = useState(false);
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [returnDate, setReturnDate] = useState("");
@@ -414,6 +435,15 @@ export default function LuxRiBooking() {
     const id = setInterval(checkPending, 20000);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    if (tripType === "airport") return;
+    const estimate = estimateDrivingMiles(pickupCoords, dropoffCoords);
+    if (estimate != null) {
+      setMiles(String(estimate));
+      setMilesAuto(true);
+    }
+  }, [pickupCoords, dropoffCoords, tripType]);
 
   const enableNotifications = async () => {
     if (typeof Notification === "undefined") return;
@@ -976,6 +1006,9 @@ export default function LuxRiBooking() {
     setDropoff("");
     setFlight("");
     setMiles("");
+    setPickupCoords(null);
+    setDropoffCoords(null);
+    setMilesAuto(false);
     setDate("");
     setTime("");
     setReturnDate("");
@@ -1000,6 +1033,9 @@ export default function LuxRiBooking() {
     setDropoff(b.dropoff);
     setFlight(b.flight || "");
     setMiles(b.miles || "");
+    setPickupCoords(null);
+    setDropoffCoords(null);
+    setMilesAuto(false);
     setDate(b.date);
     setTime(b.time);
     setReturnDate(b.returnDate || "");
@@ -1032,6 +1068,9 @@ export default function LuxRiBooking() {
     setDropoff(b.dropoff);
     setFlight(b.flight || "");
     setMiles(b.miles || "");
+    setPickupCoords(null);
+    setDropoffCoords(null);
+    setMilesAuto(false);
     setDate("");
     setTime("");
     setReturnDate("");
@@ -1804,13 +1843,43 @@ export default function LuxRiBooking() {
                   </div>
 
                   <div className="space-y-3">
-                    <AddressField icon={<MapPin size={16} />} placeholder="Pickup address" value={pickup} onChange={setPickup} theme={C} />
-                    <AddressField icon={<MapPin size={16} />} placeholder="Drop-off address" value={dropoff} onChange={setDropoff} theme={C} />
+                    <AddressField
+                      icon={<MapPin size={16} />}
+                      placeholder="Pickup address"
+                      value={pickup}
+                      onChange={setPickup}
+                      onPlaceSelected={setPickupCoords}
+                      theme={C}
+                    />
+                    <AddressField
+                      icon={<MapPin size={16} />}
+                      placeholder="Drop-off address"
+                      value={dropoff}
+                      onChange={setDropoff}
+                      onPlaceSelected={setDropoffCoords}
+                      theme={C}
+                    />
                     {tripType === "airport" && (
                       <Field icon={<Plane size={16} />} placeholder="Flight number" value={flight} onChange={setFlight} />
                     )}
                     {tripType !== "airport" && (
-                      <Field icon={<Car size={16} />} placeholder="Estimated miles" value={miles} onChange={setMiles} type="number" />
+                      <div className="space-y-1">
+                        <Field
+                          icon={<Car size={16} />}
+                          placeholder="Estimated miles"
+                          value={miles}
+                          onChange={(v) => {
+                            setMiles(v);
+                            setMilesAuto(false);
+                          }}
+                          type="number"
+                        />
+                        {milesAuto && (
+                          <div className="text-[11px]" style={{ color: C.faint }}>
+                            Auto-estimated from your addresses — edit if needed.
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
 
