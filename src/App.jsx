@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Plane, MapPin, Car, ChevronRight, ChevronLeft, Check, Clock, Users, User, LogOut, History, ArrowRight, MessageSquare, LayoutDashboard, Bell } from "lucide-react";
+import { Plane, MapPin, Car, ChevronRight, ChevronLeft, Check, Clock, Users, User, LogOut, History, ArrowRight, MessageSquare, Bell } from "lucide-react";
 import { storage } from "./lib/storage";
 import { AddressField } from "./components/AddressField";
 
@@ -11,6 +11,9 @@ const CANCEL_CUTOFF_MINUTES = 60;
 const LOYALTY_EVERY = 5;
 const REFERRAL_PCT = 20;
 const FIRST_RIDE_PCT = 15;
+// One-time code to grant yourself the operator role during sign-up.
+// Change this to something only you know, then tell me the new value.
+const OPERATOR_SETUP_CODE = "LUXRI-OWNER-SETUP";
 const TIP_OPTIONS = [0, 10, 15, 20];
 
 // ---- Theme (inline styles — arbitrary Tailwind color classes aren't reliable here) ----
@@ -264,7 +267,7 @@ function FeedbackForm({ booking, theme: T, onSubmitted }) {
 }
 
 export default function LuxRiBooking() {
-  const [mode, setMode] = useState("welcome"); // welcome | signin | signup | booking | history | dashboard-login | dashboard
+  const [mode, setMode] = useState("welcome"); // welcome | signin | signup | booking | history | lookup | dashboard | driverRides
   const [account, setAccount] = useState(null); // {email, name, phone}
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
@@ -272,6 +275,11 @@ export default function LuxRiBooking() {
   const [authPhone, setAuthPhone] = useState("");
   const [authBusiness, setAuthBusiness] = useState("");
   const [authReferralCode, setAuthReferralCode] = useState("");
+  const [authStaffCode, setAuthStaffCode] = useState("");
+  const [drivers, setDrivers] = useState([]);
+  const [driverInvites, setDriverInvites] = useState([]);
+  const [inviteGenBusy, setInviteGenBusy] = useState(false);
+  const [driverRides, setDriverRides] = useState([]);
   const [inviteContact, setInviteContact] = useState("");
   const [ratingSummary, setRatingSummary] = useState({ avg: 0, count: 0 });
   const [signupFromNudge, setSignupFromNudge] = useState(false);
@@ -279,7 +287,6 @@ export default function LuxRiBooking() {
   const [authBusy, setAuthBusy] = useState(false);
   const [history, setHistory] = useState([]);
 
-  const [dashPass, setDashPass] = useState("");
   const [dashError, setDashError] = useState("");
   const [dashBookings, setDashBookings] = useState(null);
   const [dashBusy, setDashBusy] = useState(false);
@@ -460,12 +467,38 @@ export default function LuxRiBooking() {
         setAuthBusy(false);
         return;
       }
+
+      let role = "customer";
+      const staffCode = authStaffCode.trim();
+      if (staffCode && staffCode.toUpperCase() === OPERATOR_SETUP_CODE.toUpperCase()) {
+        role = "operator";
+      } else if (staffCode) {
+        const inviteKey = `invite:${staffCode.toUpperCase()}`;
+        const inviteRes = await storage.get(inviteKey).catch(() => null);
+        if (inviteRes) {
+          const invite = JSON.parse(inviteRes.value);
+          if (invite.status === "pending") {
+            role = "driver";
+            await storage.set(inviteKey, JSON.stringify({ ...invite, status: "used", usedBy: normEmail(authEmail), usedAt: new Date().toISOString() }));
+          } else {
+            setAuthError("That invite code has already been used.");
+            setAuthBusy(false);
+            return;
+          }
+        } else {
+          setAuthError("That staff code isn't valid.");
+          setAuthBusy(false);
+          return;
+        }
+      }
+
       const acct = {
         email: normEmail(authEmail),
         name: authName,
         phone: authPhone,
         business: authBusiness.trim(),
         pass: simpleHash(authPassword),
+        role,
         referralCode: "REF-" + Math.random().toString(36).slice(2, 8).toUpperCase(),
         referredBy: authReferralCode.trim() ? authReferralCode.trim().toUpperCase() : "",
         referralConsumed: false,
@@ -473,7 +506,14 @@ export default function LuxRiBooking() {
       };
       await storage.set(key, JSON.stringify(acct));
       setAccount(acct);
-      if (signupFromNudge) {
+
+      if (role === "operator") {
+        await loadDashboard();
+        setMode("dashboard");
+      } else if (role === "driver") {
+        await loadDriverRides(acct);
+        setMode("driverRides");
+      } else if (signupFromNudge) {
         try {
           const bres = confirmCode ? await storage.get(`booking:${confirmCode}`).catch(() => null) : null;
           const existingBooking = bres ? JSON.parse(bres.value) : null;
@@ -514,8 +554,16 @@ export default function LuxRiBooking() {
         return;
       }
       setAccount(acct);
-      await loadHistoryFor(acct);
-      enterBookingAs(acct);
+      if (acct.role === "operator") {
+        await loadDashboard();
+        setMode("dashboard");
+      } else if (acct.role === "driver") {
+        await loadDriverRides(acct);
+        setMode("driverRides");
+      } else {
+        await loadHistoryFor(acct);
+        enterBookingAs(acct);
+      }
     } catch (e) {
       setAuthError("No account found with that email.");
     } finally {
@@ -526,6 +574,10 @@ export default function LuxRiBooking() {
   const handleSignOut = () => {
     setAccount(null);
     setHistory([]);
+    setDashBookings(null);
+    setDrivers([]);
+    setDriverInvites([]);
+    setDriverRides([]);
     setMode("welcome");
     setName("");
     setPhone("");
@@ -533,10 +585,6 @@ export default function LuxRiBooking() {
   };
 
   const loadDashboard = async () => {
-    if (dashPass !== "1234") {
-      setDashError("Incorrect passcode.");
-      return;
-    }
     setDashError("");
     setDashBusy(true);
     try {
@@ -550,11 +598,72 @@ export default function LuxRiBooking() {
       }
       items.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setDashBookings(items);
-      setMode("dashboard");
+
+      const acctList = await storage.list("account:");
+      const driverAccts = [];
+      for (const k of acctList.keys || []) {
+        const res = await storage.get(k);
+        if (res) {
+          const a = JSON.parse(res.value);
+          if (a.role === "driver") driverAccts.push(a);
+        }
+      }
+      setDrivers(driverAccts);
+
+      const inviteList = await storage.list("invite:");
+      const invites = [];
+      for (const k of inviteList.keys || []) {
+        const res = await storage.get(k);
+        if (res) invites.push({ code: k.replace("invite:", ""), ...JSON.parse(res.value) });
+      }
+      invites.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setDriverInvites(invites);
     } catch (e) {
-      setDashError("Could not load bookings.");
+      setDashError("Could not load dashboard data.");
     } finally {
       setDashBusy(false);
+    }
+  };
+
+  const loadDriverRides = async (acct) => {
+    try {
+      const list = await storage.list("booking:");
+      const items = [];
+      for (const k of list.keys || []) {
+        const res = await storage.get(k);
+        if (res) {
+          const b = JSON.parse(res.value);
+          if (b.assignedDriverEmail && normEmail(b.assignedDriverEmail) === normEmail(acct.email)) items.push(b);
+        }
+      }
+      items.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setDriverRides(items);
+    } catch {
+      setDriverRides([]);
+    }
+  };
+
+  const generateDriverInvite = async () => {
+    setInviteGenBusy(true);
+    try {
+      const code = "DRV-" + Math.random().toString(36).slice(2, 8).toUpperCase();
+      const invite = { status: "pending", createdAt: new Date().toISOString() };
+      await storage.set(`invite:${code}`, JSON.stringify(invite));
+      setDriverInvites((prev) => [{ code, ...invite }, ...prev]);
+    } catch {
+      // no-op
+    } finally {
+      setInviteGenBusy(false);
+    }
+  };
+
+  const assignDriver = async (booking, driverEmail) => {
+    try {
+      const updated = { ...booking, assignedDriverEmail: driverEmail || "" };
+      await storage.set(`booking:${booking.code}`, JSON.stringify(updated));
+      setDashBookings((prev) => prev.map((x) => (x.code === booking.code ? updated : x)));
+    } catch {
+      // no-op
     }
   };
 
@@ -563,6 +672,7 @@ export default function LuxRiBooking() {
       const updated = { ...b, status: "confirmed" };
       await storage.set(`booking:${b.code}`, JSON.stringify(updated));
       setDashBookings((prev) => prev.map((x) => (x.code === b.code ? updated : x)));
+      setDriverRides((prev) => prev.map((x) => (x.code === b.code ? updated : x)));
       checkPending();
       const msg = `Hi ${b.name.split(" ")[0]}, your LuxRi ride on ${b.date} at ${b.time} (${VEHICLES[b.vehicle]?.name}) is confirmed. Confirmation ${b.code}. See you soon!`;
       window.open(smsLink(b.phone, msg), "_self");
@@ -589,6 +699,7 @@ export default function LuxRiBooking() {
       const updated = { ...b, status: "completed" };
       await storage.set(`booking:${b.code}`, JSON.stringify(updated));
       setDashBookings((prev) => prev.map((x) => (x.code === b.code ? updated : x)));
+      setDriverRides((prev) => prev.map((x) => (x.code === b.code ? updated : x)));
 
       // First completed ride for a referred customer credits the referrer.
       if (b.email) {
@@ -818,6 +929,7 @@ export default function LuxRiBooking() {
       passengers,
       luggage,
       fare,
+      assignedDriverEmail: "",
       business: account?.business || "",
       referredBy: account?.referredBy || "",
       discountType,
@@ -994,7 +1106,7 @@ export default function LuxRiBooking() {
       <div className="w-full max-w-xl">
         {/* Header */}
         <div className="mb-10 text-center relative">
-          {account && mode !== "welcome" && (
+          {account && (!account.role || account.role === "customer") && mode !== "welcome" && (
             <div className="absolute right-0 top-0 flex items-center gap-3" style={{ fontFamily: "system-ui, sans-serif" }}>
               <button
                 onClick={() => { loadHistoryFor(account); setMode("history"); }}
@@ -1064,18 +1176,6 @@ export default function LuxRiBooking() {
             >
               Track a Booking
             </button>
-            <button
-              onClick={() => { setDashError(""); setDashPass(""); setMode("dashboard-login"); }}
-              className="w-full pt-2 text-[10px] tracking-[0.1em] uppercase flex items-center justify-center gap-1.5 relative"
-              style={{ color: C.faintest }}
-            >
-              <LayoutDashboard size={11} /> Driver Dashboard
-              {pendingCount > 0 && (
-                <span className="flex items-center gap-1" style={{ color: C.gold }}>
-                  <Bell size={11} /> {pendingCount}
-                </span>
-              )}
-            </button>
           </div>
         )}
 
@@ -1093,6 +1193,7 @@ export default function LuxRiBooking() {
                 <Field placeholder="Phone number" value={authPhone} onChange={setAuthPhone} type="tel" />
                 <Field placeholder="Company (optional)" value={authBusiness} onChange={setAuthBusiness} />
                 <Field placeholder="Referral code (optional)" value={authReferralCode} onChange={setAuthReferralCode} />
+                <Field placeholder="Staff code (operator/driver only)" value={authStaffCode} onChange={setAuthStaffCode} />
               </>
             )}
             <Field placeholder="Email" value={authEmail} onChange={setAuthEmail} type="email" />
@@ -1119,13 +1220,18 @@ export default function LuxRiBooking() {
           </div>
         )}
 
-        {mode === "dashboard-login" && (
+        {mode === "dashboard" && (
           <div
-            className="rounded-sm border p-6 sm:p-8 space-y-3"
+            className="rounded-sm border p-6 sm:p-8 space-y-5"
             style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "system-ui, sans-serif" }}
           >
-            <div className="text-xs tracking-[0.15em] uppercase mb-1 flex items-center gap-2" style={{ color: C.mutedDark }}>
-              <LayoutDashboard size={14} /> Driver Access
+            <div className="flex items-center justify-between mb-1">
+              <div className="text-xs tracking-[0.15em] uppercase flex items-center gap-2" style={{ color: C.mutedDark }}>
+                All Bookings {pendingCount > 0 && <span style={{ color: C.gold }}>({pendingCount} pending)</span>}
+              </div>
+              <button onClick={handleSignOut} className="text-xs" style={{ color: C.mutedDark }}>
+                Sign Out
+              </button>
             </div>
             {notifPermission !== "granted" && notifPermission !== "unsupported" && (
               <button
@@ -1136,35 +1242,6 @@ export default function LuxRiBooking() {
                 <Bell size={13} /> Enable Booking Notifications
               </button>
             )}
-            <Field placeholder="Passcode" value={dashPass} onChange={setDashPass} type="password" />
-            {dashError && <div className="text-sm" style={{ color: C.error }}>{dashError}</div>}
-            <button
-              onClick={loadDashboard}
-              disabled={dashBusy}
-              className="w-full py-3 rounded-sm text-sm tracking-wide disabled:opacity-40"
-              style={{ background: goldGradient, color: C.bg }}
-            >
-              {dashBusy ? "Loading…" : "Enter"}
-            </button>
-            <button onClick={() => setMode("welcome")} className="w-full text-xs tracking-wide" style={{ color: C.faintest }}>
-              Back
-            </button>
-          </div>
-        )}
-
-        {mode === "dashboard" && (
-          <div
-            className="rounded-sm border p-6 sm:p-8 space-y-5"
-            style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "system-ui, sans-serif" }}
-          >
-            <div className="flex items-center justify-between mb-1">
-              <div className="text-xs tracking-[0.15em] uppercase flex items-center gap-2" style={{ color: C.mutedDark }}>
-                All Bookings {pendingCount > 0 && <span style={{ color: C.gold }}>({pendingCount} pending)</span>}
-              </div>
-              <button onClick={() => setMode("welcome")} className="text-xs" style={{ color: C.mutedDark }}>
-                Close
-              </button>
-            </div>
 
             <div className="border rounded-sm p-3 space-y-2" style={{ borderColor: C.border }}>
               <div className="text-[11px] tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
@@ -1268,6 +1345,47 @@ export default function LuxRiBooking() {
               )}
             </div>
 
+            <div className="border rounded-sm p-3 space-y-2" style={{ borderColor: C.border }}>
+              <div className="text-[11px] tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
+                Drivers {inviteGenBusy && <span style={{ color: C.gold }}>· generating…</span>}
+              </div>
+              {drivers.length > 0 && (
+                <div className="space-y-1">
+                  {drivers.map((d) => (
+                    <div key={d.email} className="text-xs" style={{ color: C.ivory }}>
+                      {d.name} <span style={{ color: C.mutedDark }}>· {d.phone}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {drivers.length === 0 && <div className="text-xs" style={{ color: C.mutedDark }}>No drivers added yet.</div>}
+              <button
+                onClick={generateDriverInvite}
+                className="w-full py-2.5 rounded-sm text-xs border"
+                style={{ borderColor: C.gold, color: C.gold }}
+              >
+                Generate Driver Invite Code
+              </button>
+              {driverInvites.filter((i) => i.status === "pending").length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {driverInvites
+                    .filter((i) => i.status === "pending")
+                    .map((i) => (
+                      <span
+                        key={i.code}
+                        className="text-[11px] px-2 py-1 rounded-sm border"
+                        style={{ borderColor: C.border, color: C.gold }}
+                      >
+                        {i.code} (unused)
+                      </span>
+                    ))}
+                </div>
+              )}
+              <div className="text-[11px]" style={{ color: C.faint }}>
+                Give a driver this code — they'll enter it as a "staff code" when creating their account.
+              </div>
+            </div>
+
             {(!dashBookings || dashBookings.length === 0) && (
               <div className="text-sm" style={{ color: C.mutedDark }}>No bookings yet.</div>
             )}
@@ -1310,6 +1428,24 @@ export default function LuxRiBooking() {
                       {b.status || "pending"}
                     </span>
                   </div>
+                  {drivers.length > 0 && b.status !== "cancelled" && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px]" style={{ color: C.mutedDark }}>Driver:</span>
+                      <select
+                        value={b.assignedDriverEmail || ""}
+                        onChange={(e) => assignDriver(b, e.target.value)}
+                        className="flex-1 rounded-sm px-2 py-1.5 text-xs border"
+                        style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
+                      >
+                        <option value="">Unassigned (me)</option>
+                        {drivers.map((d) => (
+                          <option key={d.email} value={d.email}>
+                            {d.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                   {b.status !== "confirmed" && b.status !== "cancelled" && b.status !== "completed" && (
                     <button
                       onClick={() => confirmBooking(b)}
@@ -1330,6 +1466,86 @@ export default function LuxRiBooking() {
                   )}
                 </div>
               ))}
+          </div>
+        )}
+
+        {mode === "driverRides" && (
+          <div
+            className="rounded-sm border p-6 sm:p-8 space-y-3"
+            style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "system-ui, sans-serif" }}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <div className="text-xs tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
+                My Rides {account?.name ? `— ${account.name}` : ""}
+              </div>
+              <button onClick={handleSignOut} className="text-xs" style={{ color: C.mutedDark }}>
+                Sign Out
+              </button>
+            </div>
+            {notifPermission !== "granted" && notifPermission !== "unsupported" && (
+              <button
+                onClick={enableNotifications}
+                className="w-full py-2.5 rounded-sm border text-xs tracking-wide flex items-center justify-center gap-1.5"
+                style={{ borderColor: C.gold, color: C.gold }}
+              >
+                <Bell size={13} /> Enable Ride Notifications
+              </button>
+            )}
+            {driverRides.length === 0 && (
+              <div className="text-sm" style={{ color: C.mutedDark }}>No rides assigned to you yet.</div>
+            )}
+            {driverRides.map((b) => (
+              <div
+                key={b.code}
+                className="border rounded-sm p-3 text-sm space-y-2"
+                style={{ borderColor: C.border, opacity: b.status === "cancelled" ? 0.5 : 1 }}
+              >
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div style={{ color: C.ivory }}>{b.name} · {VEHICLES[b.vehicle]?.name}</div>
+                    <div className="text-xs mt-0.5" style={{ color: C.mutedDark }}>
+                      {b.date} · {b.time} · {b.tripType}
+                      {b.tripType === "round" && b.returnDate ? ` · return ${b.returnDate} ${b.returnTime}` : ""}
+                    </div>
+                    <div className="text-xs" style={{ color: C.mutedDark }}>{b.pickup} → {b.dropoff}</div>
+                    <div className="text-xs" style={{ color: C.mutedDark }}>{b.phone}</div>
+                    {(b.passengers || b.luggage) && (
+                      <div className="text-xs" style={{ color: C.mutedDark }}>
+                        {b.passengers && `${b.passengers} pax`}{b.passengers && b.luggage ? " · " : ""}{b.luggage && `${b.luggage} bags`}
+                      </div>
+                    )}
+                  </div>
+                  <span
+                    className="text-[10px] uppercase tracking-wide px-2 py-1 rounded-sm shrink-0 border"
+                    style={
+                      b.status === "confirmed" || b.status === "completed"
+                        ? { background: "#2A2311", color: C.gold, borderColor: C.gold }
+                        : { background: "transparent", color: C.mutedDark, borderColor: C.border }
+                    }
+                  >
+                    {b.status || "pending"}
+                  </span>
+                </div>
+                {b.status !== "confirmed" && b.status !== "cancelled" && b.status !== "completed" && (
+                  <button
+                    onClick={() => confirmBooking(b)}
+                    className="w-full py-2 rounded-sm text-xs tracking-wide flex items-center justify-center gap-1.5"
+                    style={{ background: goldGradient, color: C.bg }}
+                  >
+                    <MessageSquare size={12} /> Confirm & Text Customer
+                  </button>
+                )}
+                {b.status === "confirmed" && (
+                  <button
+                    onClick={() => completeBooking(b)}
+                    className="w-full py-2 rounded-sm text-xs tracking-wide border"
+                    style={{ borderColor: C.gold, color: C.gold }}
+                  >
+                    Mark Ride Complete
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
         )}
 
