@@ -23,7 +23,7 @@ function loadGoogleMapsScript() {
 // Places autocomplete when VITE_GOOGLE_MAPS_KEY is set. Falls back to a
 // normal text input (still fully usable) if the key is missing or the
 // script fails to load — so the app never breaks over this.
-export function AddressField({ icon, placeholder, value, onChange, theme: T }) {
+export function AddressField({ icon, placeholder, value, onChange, onPlaceSelected, theme: T }) {
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
   const [ready, setReady] = useState(false);
@@ -34,11 +34,15 @@ export function AddressField({ icon, placeholder, value, onChange, theme: T }) {
       .then(() => {
         if (cancelled || !inputRef.current) return;
         autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
-          fields: ["formatted_address"],
+          fields: ["formatted_address", "geometry"],
         });
         autocompleteRef.current.addListener("place_changed", () => {
           const place = autocompleteRef.current.getPlace();
           if (place?.formatted_address) onChange(place.formatted_address);
+          const loc = place?.geometry?.location;
+          if (loc && onPlaceSelected) {
+            onPlaceSelected({ lat: loc.lat(), lng: loc.lng() });
+          }
         });
         setReady(true);
       })
@@ -58,7 +62,10 @@ export function AddressField({ icon, placeholder, value, onChange, theme: T }) {
         type="text"
         value={value}
         placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => {
+          onChange(e.target.value);
+          if (onPlaceSelected) onPlaceSelected(null); // typed by hand — coords are stale, clear them
+        }}
         className="w-full bg-transparent text-sm focus:outline-none"
         style={{ color: T.ivory }}
         autoComplete="off"
