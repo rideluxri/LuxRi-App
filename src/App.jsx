@@ -1,9 +1,19 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Plane, MapPin, Car, ChevronRight, ChevronLeft, Check, Clock, Users, User, LogOut, History, ArrowRight, MessageSquare, Bell } from "lucide-react";
+import { Plane, MapPin, Car, ChevronRight, ChevronLeft, Check, Clock, Users, User, ArrowRight, MessageSquare, Bell, Menu } from "lucide-react";
 import { storage } from "./lib/storage";
 import { AddressField } from "./components/AddressField";
 
 const OWNER_PHONE = "7045071718";
+const MODE_PATHS = {
+  welcome: "/",
+  signin: "/sign-in",
+  signup: "/sign-up",
+  booking: "/book",
+  history: "/my-rides",
+  lookup: "/track",
+  dashboard: "/dashboard",
+  driverRides: "/my-rides-driver",
+};
 const BUFFER_MINUTES = 30;
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DEFAULT_HOURS = { days: [0, 1, 2, 3, 4, 5, 6], start: "00:00", end: "23:59", blockedDates: [] };
@@ -180,7 +190,7 @@ function findNearestAvailableTime(bookings, hours, dateStr, desiredTime, exclude
 }
 
 // ---- Route progress (signature element) ----------------------
-function RouteProgress({ step }) {
+function RouteProgress({ step, onStepClick }) {
   return (
     <div className="w-full px-1">
       <div className="relative h-10">
@@ -190,23 +200,33 @@ function RouteProgress({ step }) {
           style={{ background: C.gold, width: `${(step / (STEPS.length - 1)) * 100}%` }}
         />
         <div className="relative flex justify-between">
-          {STEPS.map((label, i) => (
-            <div key={label} className="flex flex-col items-center gap-2" style={{ width: 1 }}>
-              <div
-                className="h-2.5 w-2.5 rounded-full border transition-colors duration-300"
-                style={{
-                  background: i <= step ? C.gold : C.bg,
-                  borderColor: i <= step ? C.gold : C.borderHover,
-                }}
-              />
-              <span
-                className="whitespace-nowrap text-[10px] tracking-[0.18em] uppercase"
-                style={{ color: i <= step ? C.ivory : C.faint }}
+          {STEPS.map((label, i) => {
+            const reachable = i < step; // step 3 (Confirm) isn't a click-back target — it's a result, not a form step
+            return (
+              <button
+                key={label}
+                type="button"
+                onClick={() => reachable && onStepClick && onStepClick(i)}
+                disabled={!reachable}
+                className="flex flex-col items-center gap-2 disabled:cursor-default"
+                style={{ width: 1 }}
               >
-                {label}
-              </span>
-            </div>
-          ))}
+                <div
+                  className="h-2.5 w-2.5 rounded-full border transition-colors duration-300"
+                  style={{
+                    background: i <= step ? C.gold : C.bg,
+                    borderColor: i <= step ? C.gold : C.borderHover,
+                  }}
+                />
+                <span
+                  className="whitespace-nowrap text-[10px] tracking-[0.18em] uppercase"
+                  style={{ color: i <= step ? C.ivory : C.faint }}
+                >
+                  {label}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -292,6 +312,7 @@ function FeedbackForm({ booking, theme: T, onSubmitted }) {
 
 export default function LuxRiBooking() {
   const [mode, setMode] = useState("welcome"); // welcome | signin | signup | booking | history | lookup | dashboard | driverRides
+  const [menuOpen, setMenuOpen] = useState(false);
   const [account, setAccount] = useState(null); // {email, name, phone}
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
@@ -443,6 +464,53 @@ export default function LuxRiBooking() {
     return () => clearInterval(id);
   }, []);
 
+  // Real browser back/forward support: every top-level screen change (and
+  // every wizard step change) pushes a history entry, so the phone/browser
+  // back button steps through the app the way people expect.
+  useEffect(() => {
+    const onPopState = (e) => {
+      const state = e.state || {};
+      setMode(state.mode || "welcome");
+      if (state.mode === "booking" && typeof state.step === "number") {
+        setStep(state.step);
+      }
+    };
+    window.history.replaceState({ mode: "welcome" }, "", MODE_PATHS.welcome);
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  const navigate = (nextMode, opts = {}) => {
+    setMode(nextMode);
+    const path = MODE_PATHS[nextMode] || "/";
+    const state = { mode: nextMode };
+    if (opts.replace) {
+      window.history.replaceState(state, "", path);
+    } else {
+      window.history.pushState(state, "", path);
+    }
+  };
+
+  // Step changes inside the booking wizard push history too, so back-stepping
+  // through Route -> Vehicle -> Details -> Confirm works with the real back button.
+  const goToStep = (n) => {
+    setStep(n);
+    window.history.pushState({ mode: "booking", step: n }, "", MODE_PATHS.booking);
+  };
+
+  const goHome = () => {
+    setMenuOpen(false);
+    if (account?.role === "operator") {
+      loadDashboard();
+      navigate("dashboard");
+    } else if (account?.role === "driver") {
+      loadDriverRides(account);
+      navigate("driverRides");
+    } else {
+      navigate("welcome");
+    }
+  };
+
   useEffect(() => {
     const estimate = estimateDrivingMiles(pickupCoords, dropoffCoords);
     if (estimate != null) {
@@ -485,7 +553,7 @@ export default function LuxRiBooking() {
       setPhone("");
       setEmail("");
     }
-    setMode("booking");
+    navigate("booking");
   };
 
   const handleSignUp = async () => {
@@ -545,10 +613,10 @@ export default function LuxRiBooking() {
 
       if (role === "operator") {
         await loadDashboard();
-        setMode("dashboard");
+        navigate("dashboard");
       } else if (role === "driver") {
         await loadDriverRides(acct);
-        setMode("driverRides");
+        navigate("driverRides");
       } else if (signupFromNudge) {
         try {
           const bres = confirmCode ? await storage.get(`booking:${confirmCode}`).catch(() => null) : null;
@@ -560,7 +628,7 @@ export default function LuxRiBooking() {
           setHistory([]);
         }
         setSignupFromNudge(false);
-        setMode("history");
+        navigate("history");
       } else {
         setHistory([]);
         enterBookingAs(acct);
@@ -592,10 +660,10 @@ export default function LuxRiBooking() {
       setAccount(acct);
       if (acct.role === "operator") {
         await loadDashboard();
-        setMode("dashboard");
+        navigate("dashboard");
       } else if (acct.role === "driver") {
         await loadDriverRides(acct);
-        setMode("driverRides");
+        navigate("driverRides");
       } else {
         await loadHistoryFor(acct);
         enterBookingAs(acct);
@@ -614,7 +682,7 @@ export default function LuxRiBooking() {
     setDrivers([]);
     setDriverInvites([]);
     setDriverRides([]);
-    setMode("welcome");
+    navigate("welcome");
     setName("");
     setPhone("");
     setEmail("");
@@ -930,9 +998,9 @@ export default function LuxRiBooking() {
       }
       setCheckingSlot(false);
     }
-    setStep(step + 1);
+    goToStep(step + 1);
   };
-  const goBack = () => step > 0 && setStep(step - 1);
+  const goBack = () => step > 0 && goToStep(step - 1);
 
   const submitBooking = async () => {
     setSaving(true);
@@ -997,7 +1065,7 @@ export default function LuxRiBooking() {
       }
       setConfirmCode(code);
       checkPending();
-      setStep(3);
+      goToStep(3);
     } catch (e) {
       setError("Could not save the booking. Please try again.");
     } finally {
@@ -1067,7 +1135,7 @@ export default function LuxRiBooking() {
     setSlotError("");
     setError("");
     setStep(0);
-    setMode("booking");
+    navigate("booking");
   };
 
   const bookAgain = (b) => {
@@ -1099,7 +1167,7 @@ export default function LuxRiBooking() {
     setSuggestedTime(null);
     setError("");
     setStep(0);
-    setMode("booking");
+    navigate("booking");
   };
 
   const cancelBooking = async (b, onDone) => {
@@ -1163,29 +1231,129 @@ export default function LuxRiBooking() {
       <div className="w-full max-w-xl">
         {/* Header */}
         <div className="mb-10 text-center relative">
-          {account && (!account.role || account.role === "customer") && mode !== "welcome" && (
-            <div className="absolute right-0 top-0 flex items-center gap-3" style={{ fontFamily: "system-ui, sans-serif" }}>
-              <button
-                onClick={() => { loadHistoryFor(account); setMode("history"); }}
-                style={{ color: C.mutedDark }}
-                title="My rides"
+          <div className="absolute right-0 top-0" style={{ fontFamily: "system-ui, sans-serif" }}>
+            <button onClick={() => setMenuOpen((v) => !v)} style={{ color: C.mutedDark }} title="Menu">
+              <Menu size={18} />
+            </button>
+            {menuOpen && (
+              <div
+                className="absolute right-0 mt-2 w-48 rounded-sm border py-1.5 text-left z-10"
+                style={{ borderColor: C.panelBorder, background: C.panel }}
               >
-                <History size={16} />
-              </button>
-              <button onClick={handleSignOut} style={{ color: C.mutedDark }} title="Sign out">
-                <LogOut size={16} />
-              </button>
+                {!account && (
+                  <>
+                    <button
+                      onClick={() => { setMenuOpen(false); setAuthError(""); navigate("signin"); }}
+                      className="w-full text-left px-3 py-2 text-xs"
+                      style={{ color: C.ivory }}
+                    >
+                      Sign In
+                    </button>
+                    <button
+                      onClick={() => { setMenuOpen(false); setAuthError(""); navigate("signup"); }}
+                      className="w-full text-left px-3 py-2 text-xs"
+                      style={{ color: C.ivory }}
+                    >
+                      Create Account
+                    </button>
+                    <button
+                      onClick={() => { setMenuOpen(false); enterBookingAs(null); }}
+                      className="w-full text-left px-3 py-2 text-xs"
+                      style={{ color: C.ivory }}
+                    >
+                      Book a Ride
+                    </button>
+                    <button
+                      onClick={() => { setMenuOpen(false); setLookupError(""); setLookupBooking(null); navigate("lookup"); }}
+                      className="w-full text-left px-3 py-2 text-xs"
+                      style={{ color: C.ivory }}
+                    >
+                      Track a Booking
+                    </button>
+                  </>
+                )}
+                {account && (!account.role || account.role === "customer") && (
+                  <>
+                    <button
+                      onClick={() => { setMenuOpen(false); enterBookingAs(account); }}
+                      className="w-full text-left px-3 py-2 text-xs"
+                      style={{ color: C.ivory }}
+                    >
+                      Book a Ride
+                    </button>
+                    <button
+                      onClick={() => { setMenuOpen(false); loadHistoryFor(account); navigate("history"); }}
+                      className="w-full text-left px-3 py-2 text-xs"
+                      style={{ color: C.ivory }}
+                    >
+                      My Rides
+                    </button>
+                    <button
+                      onClick={() => { setMenuOpen(false); setLookupError(""); setLookupBooking(null); navigate("lookup"); }}
+                      className="w-full text-left px-3 py-2 text-xs"
+                      style={{ color: C.ivory }}
+                    >
+                      Track a Booking
+                    </button>
+                    <button
+                      onClick={() => { setMenuOpen(false); handleSignOut(); }}
+                      className="w-full text-left px-3 py-2 text-xs"
+                      style={{ color: C.error }}
+                    >
+                      Sign Out
+                    </button>
+                  </>
+                )}
+                {account?.role === "operator" && (
+                  <>
+                    <button
+                      onClick={() => { setMenuOpen(false); loadDashboard(); navigate("dashboard"); }}
+                      className="w-full text-left px-3 py-2 text-xs"
+                      style={{ color: C.ivory }}
+                    >
+                      Dashboard
+                    </button>
+                    <button
+                      onClick={() => { setMenuOpen(false); handleSignOut(); }}
+                      className="w-full text-left px-3 py-2 text-xs"
+                      style={{ color: C.error }}
+                    >
+                      Sign Out
+                    </button>
+                  </>
+                )}
+                {account?.role === "driver" && (
+                  <>
+                    <button
+                      onClick={() => { setMenuOpen(false); loadDriverRides(account); navigate("driverRides"); }}
+                      className="w-full text-left px-3 py-2 text-xs"
+                      style={{ color: C.ivory }}
+                    >
+                      My Rides
+                    </button>
+                    <button
+                      onClick={() => { setMenuOpen(false); handleSignOut(); }}
+                      className="w-full text-left px-3 py-2 text-xs"
+                      style={{ color: C.error }}
+                    >
+                      Sign Out
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+          <button onClick={goHome} className="w-full">
+            <div className="text-[11px] tracking-[0.3em] uppercase mb-2" style={{ color: C.muted }}>
+              Private Chauffeur
             </div>
-          )}
-          <div className="text-[11px] tracking-[0.3em] uppercase mb-2" style={{ color: C.muted }}>
-            Private Chauffeur
-          </div>
-          <div className="text-4xl tracking-wide" style={{ letterSpacing: "0.04em" }}>
-            Lux<span style={{ color: C.gold }}>Ri</span>
-          </div>
-          <div className="mt-2 text-sm" style={{ color: C.mutedDark, fontFamily: "system-ui, sans-serif" }}>
-            LuxRi Driving Services
-          </div>
+            <div className="text-4xl tracking-wide" style={{ letterSpacing: "0.04em" }}>
+              Lux<span style={{ color: C.gold }}>Ri</span>
+            </div>
+            <div className="mt-2 text-sm" style={{ color: C.mutedDark, fontFamily: "system-ui, sans-serif" }}>
+              LuxRi Driving Services
+            </div>
+          </button>
           <div
             className="mx-auto mt-4 h-px w-16"
             style={{ background: `linear-gradient(to right, transparent, ${C.gold}, transparent)` }}
@@ -1206,14 +1374,14 @@ export default function LuxRiBooking() {
               Save your details for faster booking, or continue as a guest.
             </div>
             <button
-              onClick={() => { setAuthError(""); setMode("signin"); }}
+              onClick={() => { setAuthError(""); navigate("signin"); }}
               className="w-full py-3 rounded-sm border text-sm tracking-wide"
               style={{ borderColor: C.gold, color: C.ivory }}
             >
               Sign In
             </button>
             <button
-              onClick={() => { setAuthError(""); setMode("signup"); }}
+              onClick={() => { setAuthError(""); navigate("signup"); }}
               className="w-full py-3 rounded-sm border text-sm tracking-wide"
               style={{ borderColor: C.border, color: C.ivory }}
             >
@@ -1227,7 +1395,7 @@ export default function LuxRiBooking() {
               Continue as Guest <ArrowRight size={12} />
             </button>
             <button
-              onClick={() => { setLookupError(""); setLookupBooking(null); setMode("lookup"); }}
+              onClick={() => { setLookupError(""); setLookupBooking(null); navigate("lookup"); }}
               className="w-full text-xs tracking-[0.1em] uppercase flex items-center justify-center gap-1"
               style={{ color: C.mutedDark }}
             >
@@ -1265,13 +1433,13 @@ export default function LuxRiBooking() {
               {authBusy ? "Please wait…" : mode === "signin" ? "Sign In" : "Create Account"}
             </button>
             <button
-              onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+              onClick={() => navigate(mode === "signin" ? "signup" : "signin")}
               className="w-full text-xs tracking-wide"
               style={{ color: C.mutedDark }}
             >
               {mode === "signin" ? "New here? Create an account" : "Already have an account? Sign in"}
             </button>
-            <button onClick={() => { setSignupFromNudge(false); setMode("welcome"); }} className="w-full text-xs tracking-wide" style={{ color: C.faintest }}>
+            <button onClick={() => { setSignupFromNudge(false); navigate("welcome"); }} className="w-full text-xs tracking-wide" style={{ color: C.faintest }}>
               Back
             </button>
           </div>
@@ -1830,7 +1998,7 @@ export default function LuxRiBooking() {
                 )}
               </div>
             )}
-            <button onClick={() => setMode("welcome")} className="w-full text-xs tracking-wide pt-1" style={{ color: C.faintest }}>
+            <button onClick={() => navigate("welcome")} className="w-full text-xs tracking-wide pt-1" style={{ color: C.faintest }}>
               Back
             </button>
           </div>
@@ -1839,7 +2007,7 @@ export default function LuxRiBooking() {
         {mode === "booking" && (
           <>
             <div className="mb-8">
-              <RouteProgress step={step} />
+              <RouteProgress step={step} onStepClick={goToStep} />
             </div>
 
             <div
@@ -2138,7 +2306,7 @@ export default function LuxRiBooking() {
                   <div className="flex items-center justify-center gap-4 pt-1">
                     {account && (
                       <button
-                        onClick={() => setMode("history")}
+                        onClick={() => navigate("history")}
                         className="text-xs tracking-[0.1em] uppercase flex items-center gap-1"
                         style={{ color: C.gold }}
                       >
@@ -2163,7 +2331,7 @@ export default function LuxRiBooking() {
                           setAuthReferralCode("");
                           setAuthError("");
                           setSignupFromNudge(true);
-                          setMode("signup");
+                          navigate("signup");
                         }}
                         className="w-full mt-2 py-2 rounded-sm text-xs tracking-wide"
                         style={{ background: goldGradient, color: C.bg }}
