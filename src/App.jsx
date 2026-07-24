@@ -4,6 +4,9 @@ import { storage } from "./lib/storage";
 import { AddressField } from "./components/AddressField";
 
 const OWNER_PHONE = "7045071718";
+// Public half of the Web Push key pair — safe to expose client-side.
+// Set VITE_VAPID_PUBLIC_KEY in your environment (Vercel + local .env).
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
 const MODE_PATHS = {
   welcome: "/",
   signin: "/sign-in",
@@ -114,6 +117,64 @@ const VEHICLES = {
 const STEPS = ["Route", "Vehicle", "Details", "Confirm"];
 
 const AIRPORT_FLAT_MILE_CAP = 10;
+
+function bookingsToCSV(bookings) {
+  const headers = [
+    "Code",
+    "Status",
+    "Date",
+    "Time",
+    "Trip Type",
+    "Vehicle",
+    "Pickup",
+    "Drop-off",
+    "Customer Name",
+    "Phone",
+    "Email",
+    "Business",
+    "Assigned Driver",
+    "Fare",
+    "Discount Type",
+    "Discount Amount",
+    "Tip",
+    "Total",
+    "Cancellation Fee",
+    "Rating",
+    "Created At",
+  ];
+  const escape = (v) => {
+    const s = v == null ? "" : String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const rows = (bookings || []).map((b) =>
+    [
+      b.code,
+      b.status || "pending",
+      b.date,
+      b.time,
+      b.tripType,
+      VEHICLES[b.vehicle]?.name || b.vehicle,
+      b.pickup,
+      b.dropoff,
+      b.name,
+      b.phone,
+      b.email,
+      b.business,
+      b.assignedDriverName,
+      b.fare,
+      b.discountType || "",
+      b.discountAmount || "",
+      b.tipAmount,
+      b.total,
+      b.cancellationFee || "",
+      b.feedbackRating || "",
+      b.createdAt,
+    ]
+      .map(escape)
+      .join(",")
+  );
+  return [headers.join(","), ...rows].join("\n");
+}
 
 function computeDashStats(bookings) {
   const list = bookings || [];
@@ -229,6 +290,15 @@ function estimateDrivingMiles(a, b) {
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
   const straightLine = 2 * R * Math.asin(Math.sqrt(h));
   return Math.round(straightLine * ROAD_DISTANCE_FACTOR * 10) / 10;
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; i++) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
 }
 
 function timeToMinutes(t) {
@@ -685,6 +755,24 @@ export default function LuxRiBooking() {
     if (typeof Notification === "undefined") return;
     const perm = await Notification.requestPermission();
     setNotifPermission(perm);
+    if (perm !== "granted") return;
+
+    // Real push (works even with the app closed) needs a signed-in account
+    // to know who to notify, a service worker, and a VAPID key configured.
+    if (!account?.email || !VAPID_PUBLIC_KEY || !("serviceWorker" in navigator)) return;
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      let subscription = await registration.pushManager.getSubscription();
+      if (!subscription) {
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        });
+      }
+      await storage.set(`pushsub:${normEmail(account.email)}`, JSON.stringify(subscription.toJSON()));
+    } catch {
+      // in-tab notifications (already enabled above) still work as a fallback
+    }
   };
 
   const loadHistoryFor = async (acct) => {
@@ -693,6 +781,47 @@ export default function LuxRiBooking() {
       setHistory(res ? JSON.parse(res.value) : []);
     } catch {
       setHistory([]);
+    }
+  };
+
+  const saveAddress = async (kind) => {
+    if (!account || (account.role && account.role !== "customer")) return;
+    const address = kind === "pickup" ? pickup : dropoff;
+    const coords = kind === "pickup" ? pickupCoords : dropoffCoords;
+    if (!address) return;
+    const label = window.prompt('Label this address (e.g. "Home", "Work"):');
+    if (!label) return;
+    try {
+      const existing = (account.savedAddresses || []).filter((a) => a.label.toLowerCase() !== label.toLowerCase());
+      const nextAddresses = [...existing, { label, address, lat: coords?.lat, lng: coords?.lng }];
+      const nextAccount = { ...account, savedAddresses: nextAddresses };
+      await storage.set(`account:${account.email}`, JSON.stringify(nextAccount));
+      setAccount(nextAccount);
+    } catch {
+      // no-op
+    }
+  };
+
+  const removeSavedAddress = async (label) => {
+    if (!account) return;
+    try {
+      const nextAddresses = (account.savedAddresses || []).filter((a) => a.label !== label);
+      const nextAccount = { ...account, savedAddresses: nextAddresses };
+      await storage.set(`account:${account.email}`, JSON.stringify(nextAccount));
+      setAccount(nextAccount);
+    } catch {
+      // no-op
+    }
+  };
+
+  const useSavedAddress = (kind, saved) => {
+    if (!saved) return;
+    if (kind === "pickup") {
+      setPickup(saved.address);
+      setPickupCoords(saved.lat != null && saved.lng != null ? { lat: saved.lat, lng: saved.lng } : null);
+    } else {
+      setDropoff(saved.address);
+      setDropoffCoords(saved.lat != null && saved.lng != null ? { lat: saved.lat, lng: saved.lng } : null);
     }
   };
 
@@ -774,6 +903,7 @@ export default function LuxRiBooking() {
         referralConsumed: false,
         referralRewardsAvailable: 0,
         agreedToTermsAt: new Date().toISOString(),
+        savedAddresses: [],
       };
       await storage.set(key, JSON.stringify(acct));
       setAccount(acct);
@@ -1449,6 +1579,19 @@ export default function LuxRiBooking() {
 
   const dashStats = computeDashStats(dashBookings);
 
+  const exportBookingsCSV = () => {
+    const csv = bookingsToCSV(dashBookings || []);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `luxri-bookings-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div
       className="min-h-screen w-full flex justify-center py-10 px-4"
@@ -1749,6 +1892,13 @@ export default function LuxRiBooking() {
               <div className="text-[10px]" style={{ color: C.faint }}>
                 Revenue reflects completed rides only.
               </div>
+              <button
+                onClick={exportBookingsCSV}
+                className="w-full py-2 rounded-sm text-xs border"
+                style={{ borderColor: C.gold, color: C.gold }}
+              >
+                Export Bookings to CSV
+              </button>
             </div>
 
             <div className="border rounded-sm p-3 space-y-2" style={{ borderColor: C.border }}>
@@ -2251,6 +2401,25 @@ export default function LuxRiBooking() {
               </div>
             )}
 
+            {account && (account.savedAddresses || []).length > 0 && (
+              <div className="border rounded-sm p-3 space-y-2" style={{ borderColor: C.border }}>
+                <div className="text-[11px] tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
+                  Saved Addresses
+                </div>
+                {account.savedAddresses.map((a) => (
+                  <div key={a.label} className="flex items-center justify-between text-xs" style={{ color: C.ivory }}>
+                    <span>
+                      <span style={{ color: C.gold }}>{a.label}</span>
+                      <span style={{ color: C.mutedDark }}> — {a.address}</span>
+                    </span>
+                    <button onClick={() => removeSavedAddress(a.label)} style={{ color: C.error }}>
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {history.length === 0 && <div className="text-sm" style={{ color: C.mutedDark }}>No rides booked yet.</div>}
             {history.map((r) => (
               <div
@@ -2502,22 +2671,62 @@ export default function LuxRiBooking() {
                   </div>
 
                   <div className="space-y-3">
-                    <AddressField
-                      icon={<MapPin size={16} />}
-                      placeholder="Pickup address"
-                      value={pickup}
-                      onChange={setPickup}
-                      onPlaceSelected={setPickupCoords}
-                      theme={C}
-                    />
-                    <AddressField
-                      icon={<MapPin size={16} />}
-                      placeholder="Drop-off address"
-                      value={dropoff}
-                      onChange={setDropoff}
-                      onPlaceSelected={setDropoffCoords}
-                      theme={C}
-                    />
+                    {account && (!account.role || account.role === "customer") && (account.savedAddresses || []).length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {account.savedAddresses.map((a) => (
+                          <div key={a.label} className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => useSavedAddress(pickup ? "dropoff" : "pickup", a)}
+                              className="text-[11px] px-2 py-1 rounded-sm border"
+                              style={{ borderColor: C.border, color: C.mutedDark }}
+                            >
+                              {a.label}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div>
+                      <AddressField
+                        icon={<MapPin size={16} />}
+                        placeholder="Pickup address"
+                        value={pickup}
+                        onChange={setPickup}
+                        onPlaceSelected={setPickupCoords}
+                        theme={C}
+                      />
+                      {account && (!account.role || account.role === "customer") && pickup && (
+                        <button
+                          type="button"
+                          onClick={() => saveAddress("pickup")}
+                          className="text-[11px] mt-1"
+                          style={{ color: C.gold }}
+                        >
+                          + Save this address
+                        </button>
+                      )}
+                    </div>
+                    <div>
+                      <AddressField
+                        icon={<MapPin size={16} />}
+                        placeholder="Drop-off address"
+                        value={dropoff}
+                        onChange={setDropoff}
+                        onPlaceSelected={setDropoffCoords}
+                        theme={C}
+                      />
+                      {account && (!account.role || account.role === "customer") && dropoff && (
+                        <button
+                          type="button"
+                          onClick={() => saveAddress("dropoff")}
+                          className="text-[11px] mt-1"
+                          style={{ color: C.gold }}
+                        >
+                          + Save this address
+                        </button>
+                      )}
+                    </div>
                     {tripType === "airport" && (
                       <Field icon={<Plane size={16} />} placeholder="Flight number" value={flight} onChange={setFlight} />
                     )}
