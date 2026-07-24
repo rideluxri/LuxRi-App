@@ -334,6 +334,9 @@ export default function LuxRiBooking() {
 
   const [dashError, setDashError] = useState("");
   const [dashBookings, setDashBookings] = useState(null);
+  const [editingCode, setEditingCode] = useState(null);
+  const [editDraft, setEditDraft] = useState(null);
+  const [editSaving, setEditSaving] = useState(false);
   const [dashBusy, setDashBusy] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [notifPermission, setNotifPermission] = useState(
@@ -771,6 +774,45 @@ export default function LuxRiBooking() {
     }
   };
 
+  const startEditBooking = (b) => {
+    setEditingCode(b.code);
+    setEditDraft({
+      pickup: b.pickup,
+      dropoff: b.dropoff,
+      date: b.date,
+      time: b.time,
+      vehicle: b.vehicle,
+      passengers: b.passengers || "",
+      luggage: b.luggage || "",
+      phone: b.phone || "",
+      notes: b.notes || "",
+    });
+  };
+
+  const cancelEditBooking = () => {
+    setEditingCode(null);
+    setEditDraft(null);
+  };
+
+  const saveBookingEdit = async (b) => {
+    if (!editDraft) return;
+    setEditSaving(true);
+    try {
+      const updated = { ...b, ...editDraft };
+      await storage.set(`booking:${b.code}`, JSON.stringify(updated));
+      setDashBookings((prev) => prev.map((x) => (x.code === b.code ? updated : x)));
+      if (updated.assignedDriverEmail && normEmail(updated.assignedDriverEmail) === normEmail(account?.email || "")) {
+        setDriverRides((prev) => prev.map((x) => (x.code === b.code ? updated : x)));
+      }
+      setEditingCode(null);
+      setEditDraft(null);
+    } catch {
+      // no-op
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
   const confirmBooking = async (b) => {
     try {
       const updated = { ...b, status: "confirmed" };
@@ -1185,11 +1227,22 @@ export default function LuxRiBooking() {
     try {
       const updated = { ...b, status: "cancelled", lateCancellation: isLate, cancellationFee: fee };
       await storage.set(`booking:${b.code}`, JSON.stringify(updated));
-      if (account) {
-        const newHistory = history.map((h) => (h.code === b.code ? updated : h));
-        await storage.set(`rides:${account.email}`, JSON.stringify(newHistory));
-        setHistory(newHistory);
+      if (b.email) {
+        try {
+          const res = await storage.get(`rides:${normEmail(b.email)}`);
+          if (res) {
+            const list = JSON.parse(res.value);
+            const newList = list.map((h) => (h.code === b.code ? updated : h));
+            await storage.set(`rides:${normEmail(b.email)}`, JSON.stringify(newList));
+            if (account && normEmail(account.email) === normEmail(b.email)) {
+              setHistory(newList);
+            }
+          }
+        } catch {
+          // guest booking with no saved account — booking record itself is already updated
+        }
       }
+      setDashBookings((prev) => (prev ? prev.map((x) => (x.code === b.code ? updated : x)) : prev));
       checkPending();
       if (onDone) onDone(updated);
     } catch {
@@ -1675,6 +1728,124 @@ export default function LuxRiBooking() {
                         ))}
                       </select>
                     </div>
+                  )}
+                  {editingCode === b.code ? (
+                    <div className="space-y-2 border-t pt-2" style={{ borderColor: C.border }}>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          value={editDraft.pickup}
+                          onChange={(e) => setEditDraft({ ...editDraft, pickup: e.target.value })}
+                          placeholder="Pickup"
+                          className="rounded-sm px-2 py-1.5 text-xs border"
+                          style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
+                        />
+                        <input
+                          value={editDraft.dropoff}
+                          onChange={(e) => setEditDraft({ ...editDraft, dropoff: e.target.value })}
+                          placeholder="Drop-off"
+                          className="rounded-sm px-2 py-1.5 text-xs border"
+                          style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="date"
+                          value={editDraft.date}
+                          onChange={(e) => setEditDraft({ ...editDraft, date: e.target.value })}
+                          className="rounded-sm px-2 py-1.5 text-xs border"
+                          style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
+                        />
+                        <input
+                          type="time"
+                          value={editDraft.time}
+                          onChange={(e) => setEditDraft({ ...editDraft, time: e.target.value })}
+                          className="rounded-sm px-2 py-1.5 text-xs border"
+                          style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <select
+                          value={editDraft.vehicle}
+                          onChange={(e) => setEditDraft({ ...editDraft, vehicle: e.target.value })}
+                          className="rounded-sm px-2 py-1.5 text-xs border"
+                          style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
+                        >
+                          {Object.entries(VEHICLES).map(([key, v]) => (
+                            <option key={key} value={key}>
+                              {v.name}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          value={editDraft.passengers}
+                          onChange={(e) => setEditDraft({ ...editDraft, passengers: e.target.value })}
+                          placeholder="Pax"
+                          type="number"
+                          className="rounded-sm px-2 py-1.5 text-xs border"
+                          style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
+                        />
+                        <input
+                          value={editDraft.luggage}
+                          onChange={(e) => setEditDraft({ ...editDraft, luggage: e.target.value })}
+                          placeholder="Bags"
+                          type="number"
+                          className="rounded-sm px-2 py-1.5 text-xs border"
+                          style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
+                        />
+                      </div>
+                      <input
+                        value={editDraft.phone}
+                        onChange={(e) => setEditDraft({ ...editDraft, phone: e.target.value })}
+                        placeholder="Phone"
+                        className="w-full rounded-sm px-2 py-1.5 text-xs border"
+                        style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
+                      />
+                      <textarea
+                        value={editDraft.notes}
+                        onChange={(e) => setEditDraft({ ...editDraft, notes: e.target.value })}
+                        placeholder="Notes"
+                        rows={2}
+                        className="w-full rounded-sm px-2 py-1.5 text-xs border resize-none"
+                        style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => saveBookingEdit(b)}
+                          disabled={editSaving}
+                          className="flex-1 py-2 rounded-sm text-xs tracking-wide disabled:opacity-40"
+                          style={{ background: goldGradient, color: C.bg }}
+                        >
+                          {editSaving ? "Saving…" : "Save Changes"}
+                        </button>
+                        <button
+                          onClick={cancelEditBooking}
+                          className="flex-1 py-2 rounded-sm text-xs border"
+                          style={{ borderColor: C.border, color: C.mutedDark }}
+                        >
+                          Cancel Edit
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    b.status !== "cancelled" &&
+                    b.status !== "completed" && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => startEditBooking(b)}
+                          className="flex-1 py-2 rounded-sm text-xs border"
+                          style={{ borderColor: C.border, color: C.mutedDark }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => cancelBooking(b)}
+                          className="flex-1 py-2 rounded-sm text-xs border"
+                          style={{ borderColor: C.error, color: C.error }}
+                        >
+                          Cancel Ride
+                        </button>
+                      </div>
+                    )
                   )}
                   {b.status !== "confirmed" && b.status !== "cancelled" && b.status !== "completed" && (
                     <button
