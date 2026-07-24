@@ -170,6 +170,16 @@ function computeDashStats(bookings) {
   };
 }
 
+function computeDriverStats(bookings, driverEmail) {
+  const list = (bookings || []).filter(
+    (b) => b.assignedDriverEmail && normEmail(b.assignedDriverEmail) === normEmail(driverEmail) && b.status !== "cancelled"
+  );
+  const completed = list.filter((b) => b.status === "completed");
+  const rated = completed.filter((b) => b.feedbackRating);
+  const avgRating = rated.length ? rated.reduce((sum, b) => sum + b.feedbackRating, 0) / rated.length : null;
+  return { rideCount: list.length, completedCount: completed.length, avgRating };
+}
+
 function estimateFare(tripType, vehicleKey, miles) {
   const v = VEHICLES[vehicleKey];
   if (!v) return 0;
@@ -420,6 +430,9 @@ export default function LuxRiBooking() {
   const [driverInvites, setDriverInvites] = useState([]);
   const [inviteGenBusy, setInviteGenBusy] = useState(false);
   const [driverRides, setDriverRides] = useState([]);
+  const [driverAssignedCount, setDriverAssignedCount] = useState(0);
+  const driverRideCountRef = useRef(0);
+  const driverHasLoadedRef = useRef(false);
   const [inviteContact, setInviteContact] = useState("");
   const [ratingSummary, setRatingSummary] = useState({ avg: 0, count: 0 });
   const [signupFromNudge, setSignupFromNudge] = useState(false);
@@ -483,6 +496,7 @@ export default function LuxRiBooking() {
   const [lookupBusy, setLookupBusy] = useState(false);
   const [rescheduling, setRescheduling] = useState(false);
   const [pendingAssignedDriver, setPendingAssignedDriver] = useState("");
+  const [pendingAssignedDriverName, setPendingAssignedDriverName] = useState("");
 
   const fare = vehicle ? estimateFare(tripType, vehicle, miles) : 0;
   const nonCancelledRides = history.filter((h) => h.status !== "cancelled").length;
@@ -561,6 +575,56 @@ export default function LuxRiBooking() {
     const id = setInterval(checkPending, 20000);
     return () => clearInterval(id);
   }, []);
+
+  // Notify a signed-in driver when the operator assigns them a new ride.
+  // Restarts whenever the signed-in account changes, since it needs a fresh
+  // closure over the current driver's email.
+  useEffect(() => {
+    if (!account || account.role !== "driver") return;
+    let cancelled = false;
+    const checkDriverAssignments = async () => {
+      try {
+        const list = await storage.list("booking:");
+        let count = 0;
+        for (const k of list.keys || []) {
+          const res = await storage.get(k);
+          if (res) {
+            const b = JSON.parse(res.value);
+            if (
+              b.assignedDriverEmail &&
+              normEmail(b.assignedDriverEmail) === normEmail(account.email) &&
+              b.status !== "cancelled" &&
+              b.status !== "completed"
+            ) {
+              count++;
+            }
+          }
+        }
+        if (cancelled) return;
+        if (
+          driverHasLoadedRef.current &&
+          count > driverRideCountRef.current &&
+          typeof Notification !== "undefined" &&
+          Notification.permission === "granted"
+        ) {
+          new Notification("New LuxRi Ride Assigned", {
+            body: "You've been assigned a new ride. Open My Rides to view it.",
+          });
+        }
+        driverRideCountRef.current = count;
+        driverHasLoadedRef.current = true;
+        setDriverAssignedCount(count);
+      } catch {
+        // storage not ready yet
+      }
+    };
+    checkDriverAssignments();
+    const id = setInterval(checkDriverAssignments, 20000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [account?.email, account?.role]);
 
   // Real browser back/forward support: every top-level screen change (and
   // every wizard step change) pushes a history entry, so the phone/browser
@@ -866,7 +930,12 @@ export default function LuxRiBooking() {
 
   const assignDriver = async (booking, driverEmail) => {
     try {
-      const updated = { ...booking, assignedDriverEmail: driverEmail || "" };
+      const driverInfo = drivers.find((d) => normEmail(d.email) === normEmail(driverEmail));
+      const updated = {
+        ...booking,
+        assignedDriverEmail: driverEmail || "",
+        assignedDriverName: driverEmail ? driverInfo?.name || "" : "",
+      };
       await storage.set(`booking:${booking.code}`, JSON.stringify(updated));
       setDashBookings((prev) => prev.map((x) => (x.code === booking.code ? updated : x)));
     } catch {
@@ -1176,6 +1245,7 @@ export default function LuxRiBooking() {
       luggage,
       fare,
       assignedDriverEmail: rescheduling ? pendingAssignedDriver : "",
+      assignedDriverName: rescheduling ? pendingAssignedDriverName : "",
       business: account?.business || "",
       referredBy: account?.referredBy || "",
       discountType,
@@ -1246,6 +1316,7 @@ export default function LuxRiBooking() {
     const minsLeft = minutesUntilPickup(b);
     if (minsLeft < 0) return; // pickup time has already passed
     setPendingAssignedDriver(b.assignedDriverEmail || "");
+    setPendingAssignedDriverName(b.assignedDriverName || "");
     setTripType(b.tripType);
     setPickup(b.pickup);
     setDropoff(b.dropoff);
@@ -1481,10 +1552,11 @@ export default function LuxRiBooking() {
                   <>
                     <button
                       onClick={() => { setMenuOpen(false); loadDriverRides(account); navigate("driverRides"); }}
-                      className="w-full text-left px-3 py-2 text-xs"
+                      className="w-full text-left px-3 py-2 text-xs flex items-center justify-between"
                       style={{ color: C.ivory }}
                     >
-                      My Rides
+                      <span>My Rides</span>
+                      {driverAssignedCount > 0 && <span style={{ color: C.gold }}>{driverAssignedCount}</span>}
                     </button>
                     <button
                       onClick={() => { setMenuOpen(false); handleSignOut(); }}
@@ -1786,12 +1858,20 @@ export default function LuxRiBooking() {
                 Drivers {inviteGenBusy && <span style={{ color: C.gold }}>· generating…</span>}
               </div>
               {drivers.length > 0 && (
-                <div className="space-y-1">
-                  {drivers.map((d) => (
-                    <div key={d.email} className="text-xs" style={{ color: C.ivory }}>
-                      {d.name} <span style={{ color: C.mutedDark }}>· {d.phone}</span>
-                    </div>
-                  ))}
+                <div className="space-y-1.5">
+                  {drivers.map((d) => {
+                    const stats = computeDriverStats(dashBookings, d.email);
+                    return (
+                      <div key={d.email} className="text-xs" style={{ color: C.ivory }}>
+                        {d.name} <span style={{ color: C.mutedDark }}>· {d.phone}</span>
+                        <span style={{ color: C.mutedDark }}>
+                          {" "}
+                          · {stats.rideCount} ride{stats.rideCount === 1 ? "" : "s"}
+                          {stats.avgRating != null && <span style={{ color: C.gold }}> · {stats.avgRating.toFixed(1)}★</span>}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
               {drivers.length === 0 && <div className="text-xs" style={{ color: C.mutedDark }}>No drivers added yet.</div>}
@@ -2085,6 +2165,28 @@ export default function LuxRiBooking() {
                     {b.status || "pending"}
                   </span>
                 </div>
+                {b.status !== "cancelled" && b.status !== "completed" && (
+                  <div className="flex gap-2">
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(b.pickup)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 text-center py-2 rounded-sm text-xs border"
+                      style={{ borderColor: C.border, color: C.mutedDark }}
+                    >
+                      Directions: Pickup
+                    </a>
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(b.dropoff)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 text-center py-2 rounded-sm text-xs border"
+                      style={{ borderColor: C.border, color: C.mutedDark }}
+                    >
+                      Directions: Drop-off
+                    </a>
+                  </div>
+                )}
                 {b.status !== "confirmed" && b.status !== "cancelled" && b.status !== "completed" && (
                   <button
                     onClick={() => confirmBooking(b)}
@@ -2174,6 +2276,9 @@ export default function LuxRiBooking() {
                   {r.tripType === "round" && r.returnDate ? ` · return ${r.returnDate} ${r.returnTime}` : ""}
                 </div>
                 <div className="text-xs" style={{ color: C.mutedDark }}>Total ${Number(r.total ?? r.fare).toFixed(0)}</div>
+                {r.assignedDriverName && (
+                  <div className="text-xs" style={{ color: C.gold }}>Your chauffeur: {r.assignedDriverName}</div>
+                )}
                 {r.status === "cancelled" && r.lateCancellation && (
                   <div className="text-xs" style={{ color: C.error }}>
                     Late cancellation fee: ${Number(r.cancellationFee || 0).toFixed(2)}
@@ -2283,6 +2388,9 @@ export default function LuxRiBooking() {
                 <div className="text-xs" style={{ color: C.mutedDark }}>
                   Total ${Number(lookupBooking.total ?? lookupBooking.fare).toFixed(0)}
                 </div>
+                {lookupBooking.assignedDriverName && (
+                  <div className="text-xs" style={{ color: C.gold }}>Your chauffeur: {lookupBooking.assignedDriverName}</div>
+                )}
                 {lookupBooking.status !== "cancelled" && lookupBooking.status !== "completed" && (
                   <div className="space-y-1.5 pt-1">
                     {minutesUntilPickup(lookupBooking) < CANCEL_CUTOFF_MINUTES && (
