@@ -13,7 +13,46 @@ const MODE_PATHS = {
   lookup: "/track",
   dashboard: "/dashboard",
   driverRides: "/my-rides-driver",
+  terms: "/terms",
 };
+
+const TERMS_SECTIONS = [
+  {
+    heading: "Booking & Payment",
+    body:
+      "By booking a ride with LuxRi Driving Services, you agree to the fare shown at booking, which is an estimate based on the trip details provided. Final payment is collected after your ride is complete, by the methods LuxRi makes available at that time. Fares vary by vehicle, trip type, distance, and any applicable discounts.",
+  },
+  {
+    heading: "Cancellations & Rescheduling",
+    body:
+      "You may cancel or reschedule a ride at any time before pickup. Cancelling within 1 hour of your scheduled pickup time incurs a late cancellation fee equal to 25% of the ride's fare. Rescheduling within that same window is free, provided it's done before your original pickup time.",
+  },
+  {
+    heading: "No-Shows",
+    body:
+      "If you are not available at the pickup location within a reasonable waiting period after the scheduled pickup time, the ride may be treated as a no-show, and the same late cancellation terms may apply at LuxRi's discretion.",
+  },
+  {
+    heading: "Conduct",
+    body:
+      "Riders are expected to treat their chauffeur and vehicle with respect. LuxRi reserves the right to refuse service for unsafe, abusive, or illegal conduct.",
+  },
+  {
+    heading: "Liability",
+    body:
+      "LuxRi Driving Services provides private chauffeur transportation on an as-available basis. LuxRi is not liable for delays caused by traffic, weather, or other circumstances outside its reasonable control. This does not limit any rights you have that cannot be waived under applicable law.",
+  },
+  {
+    heading: "Your Information",
+    body:
+      "LuxRi collects the information you provide when booking or creating an account — name, phone number, email, and pickup/drop-off addresses — to provide and manage your rides. This information is not sold to third parties.",
+  },
+  {
+    heading: "Changes",
+    body: "LuxRi may update these terms from time to time. Continued use of the app after changes means you accept the updated terms.",
+  },
+];
+
 const BUFFER_MINUTES = 30;
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DEFAULT_HOURS = { days: [0, 1, 2, 3, 4, 5, 6], start: "00:00", end: "23:59", blockedDates: [] };
@@ -75,6 +114,61 @@ const VEHICLES = {
 const STEPS = ["Route", "Vehicle", "Details", "Confirm"];
 
 const AIRPORT_FLAT_MILE_CAP = 10;
+
+function computeDashStats(bookings) {
+  const list = bookings || [];
+  const now = new Date();
+  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  let totalRides = 0;
+  let totalRevenue = 0;
+  let weekRides = 0;
+  let weekRevenue = 0;
+  let monthRides = 0;
+  let monthRevenue = 0;
+  let cancelledCount = 0;
+  const byVehicle = {};
+  const byDay = [0, 0, 0, 0, 0, 0, 0];
+
+  for (const b of list) {
+    const amt = Number(b.total ?? b.fare) || 0;
+    const bookingDate = b.date ? new Date(`${b.date}T00:00:00`) : null;
+    if (b.status === "cancelled") {
+      cancelledCount++;
+      continue;
+    }
+    totalRides++;
+    if (b.status === "completed") totalRevenue += amt;
+    if (bookingDate && bookingDate >= weekAgo) {
+      weekRides++;
+      if (b.status === "completed") weekRevenue += amt;
+    }
+    if (bookingDate && bookingDate >= monthAgo) {
+      monthRides++;
+      if (b.status === "completed") monthRevenue += amt;
+    }
+    byVehicle[b.vehicle] = (byVehicle[b.vehicle] || 0) + 1;
+    if (bookingDate) byDay[bookingDate.getDay()] += 1;
+  }
+
+  const maxDayCount = Math.max(...byDay);
+  const busiestDay = maxDayCount > 0 ? DAY_NAMES[byDay.indexOf(maxDayCount)] : "—";
+  const totalBookings = list.length;
+  const cancellationRate = totalBookings > 0 ? Math.round((cancelledCount / totalBookings) * 100) : 0;
+
+  return {
+    totalRides,
+    totalRevenue,
+    weekRides,
+    weekRevenue,
+    monthRides,
+    monthRevenue,
+    cancelledCount,
+    cancellationRate,
+    byVehicle,
+    busiestDay,
+  };
+}
 
 function estimateFare(tripType, vehicleKey, miles) {
   const v = VEHICLES[vehicleKey];
@@ -321,6 +415,7 @@ export default function LuxRiBooking() {
   const [authBusiness, setAuthBusiness] = useState("");
   const [authReferralCode, setAuthReferralCode] = useState("");
   const [authStaffCode, setAuthStaffCode] = useState("");
+  const [authAgreeTerms, setAuthAgreeTerms] = useState(false);
   const [drivers, setDrivers] = useState([]);
   const [driverInvites, setDriverInvites] = useState([]);
   const [inviteGenBusy, setInviteGenBusy] = useState(false);
@@ -565,6 +660,10 @@ export default function LuxRiBooking() {
       setAuthError("Please fill in all fields.");
       return;
     }
+    if (!authAgreeTerms) {
+      setAuthError("Please agree to the Terms of Service and cancellation policy to continue.");
+      return;
+    }
     setAuthBusy(true);
     try {
       const key = `account:${normEmail(authEmail)}`;
@@ -610,6 +709,7 @@ export default function LuxRiBooking() {
         referredBy: authReferralCode.trim() ? authReferralCode.trim().toUpperCase() : "",
         referralConsumed: false,
         referralRewardsAvailable: 0,
+        agreedToTermsAt: new Date().toISOString(),
       };
       await storage.set(key, JSON.stringify(acct));
       setAccount(acct);
@@ -1276,6 +1376,8 @@ export default function LuxRiBooking() {
     }
   };
 
+  const dashStats = computeDashStats(dashBookings);
+
   return (
     <div
       className="min-h-screen w-full flex justify-center py-10 px-4"
@@ -1476,6 +1578,28 @@ export default function LuxRiBooking() {
             )}
             <Field placeholder="Email" value={authEmail} onChange={setAuthEmail} type="email" />
             <Field placeholder="Password" value={authPassword} onChange={setAuthPassword} type="password" />
+            {mode === "signup" && (
+              <label className="flex items-start gap-2 text-[11px] pt-1" style={{ color: C.mutedDark }}>
+                <input
+                  type="checkbox"
+                  checked={authAgreeTerms}
+                  onChange={(e) => setAuthAgreeTerms(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>
+                  I agree to the{" "}
+                  <button
+                    type="button"
+                    onClick={() => navigate("terms")}
+                    className="underline"
+                    style={{ color: C.gold }}
+                  >
+                    Terms of Service and cancellation policy
+                  </button>
+                  .
+                </span>
+              </label>
+            )}
             {authError && <div className="text-sm" style={{ color: C.error }}>{authError}</div>}
             <button
               onClick={mode === "signin" ? handleSignIn : handleSignUp}
@@ -1520,6 +1644,40 @@ export default function LuxRiBooking() {
                 <Bell size={13} /> Enable Booking Notifications
               </button>
             )}
+
+            <div className="border rounded-sm p-3 space-y-3" style={{ borderColor: C.border }}>
+              <div className="text-[11px] tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
+                Overview
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <div className="text-lg" style={{ color: C.gold }}>{dashStats.weekRides}</div>
+                  <div className="text-[10px] uppercase tracking-wide" style={{ color: C.mutedDark }}>Rides · 7 days</div>
+                  <div className="text-[11px]" style={{ color: C.mutedDark }}>${dashStats.weekRevenue.toFixed(0)}</div>
+                </div>
+                <div>
+                  <div className="text-lg" style={{ color: C.gold }}>{dashStats.monthRides}</div>
+                  <div className="text-[10px] uppercase tracking-wide" style={{ color: C.mutedDark }}>Rides · 30 days</div>
+                  <div className="text-[11px]" style={{ color: C.mutedDark }}>${dashStats.monthRevenue.toFixed(0)}</div>
+                </div>
+                <div>
+                  <div className="text-lg" style={{ color: C.gold }}>{dashStats.totalRides}</div>
+                  <div className="text-[10px] uppercase tracking-wide" style={{ color: C.mutedDark }}>Rides · all-time</div>
+                  <div className="text-[11px]" style={{ color: C.mutedDark }}>${dashStats.totalRevenue.toFixed(0)}</div>
+                </div>
+              </div>
+              <div className="flex justify-between text-xs pt-1 border-t" style={{ borderColor: C.border, color: C.mutedDark }}>
+                <span>Busiest day: <span style={{ color: C.ivory }}>{dashStats.busiestDay}</span></span>
+                <span>Cancellation rate: <span style={{ color: C.ivory }}>{dashStats.cancellationRate}%</span></span>
+              </div>
+              <div className="flex justify-between text-xs" style={{ color: C.mutedDark }}>
+                <span>Model Y rides: <span style={{ color: C.ivory }}>{dashStats.byVehicle.modely || 0}</span></span>
+                <span>X7 rides: <span style={{ color: C.ivory }}>{dashStats.byVehicle.x7 || 0}</span></span>
+              </div>
+              <div className="text-[10px]" style={{ color: C.faint }}>
+                Revenue reflects completed rides only.
+              </div>
+            </div>
 
             <div className="border rounded-sm p-3 space-y-2" style={{ borderColor: C.border }}>
               <div className="text-[11px] tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
@@ -2175,6 +2333,30 @@ export default function LuxRiBooking() {
           </div>
         )}
 
+        {mode === "terms" && (
+          <div
+            className="rounded-sm border p-6 sm:p-8 space-y-4"
+            style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "system-ui, sans-serif" }}
+          >
+            <div className="text-xs tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
+              Terms of Service & Cancellation Policy
+            </div>
+            <div className="text-[11px]" style={{ color: C.faint }}>
+              This is a general policy summary, not a substitute for formal legal terms drafted for your
+              jurisdiction.
+            </div>
+            {TERMS_SECTIONS.map((s) => (
+              <div key={s.heading} className="space-y-1">
+                <div className="text-sm" style={{ color: C.gold }}>{s.heading}</div>
+                <div className="text-xs leading-relaxed" style={{ color: C.mutedDark }}>{s.body}</div>
+              </div>
+            ))}
+            <button onClick={() => navigate("welcome")} className="w-full text-xs tracking-wide pt-2" style={{ color: C.faintest }}>
+              Back
+            </button>
+          </div>
+        )}
+
         {mode === "booking" && (
           <>
             <div className="mb-8">
@@ -2562,6 +2744,11 @@ export default function LuxRiBooking() {
           style={{ color: C.faintest, fontFamily: "system-ui, sans-serif" }}
         >
           LuxRi Driving Services · One-Way · Round Trip · Airport
+          <div className="mt-1">
+            <button onClick={() => navigate("terms")} className="underline" style={{ color: C.faintest }}>
+              Terms & Cancellation Policy
+            </button>
+          </div>
         </div>
       </div>
     </div>
