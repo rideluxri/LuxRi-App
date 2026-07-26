@@ -2731,21 +2731,18 @@ export default function LuxRiBooking() {
                       <Field icon={<Plane size={16} />} placeholder="Flight number" value={flight} onChange={setFlight} />
                     )}
                     <div className="space-y-1">
-                      <Field
-                        icon={<Car size={16} />}
-                        placeholder="Estimated miles"
-                        value={miles}
-                        onChange={(v) => {
-                          setMiles(v);
-                          setMilesAuto(false);
-                        }}
-                        type="number"
-                      />
-                      {milesAuto && (
-                        <div className="text-[11px]" style={{ color: C.faint }}>
-                          Auto-estimated from your addresses — edit if needed.
-                        </div>
-                      )}
+                      <div
+                        className="flex items-center gap-2 border rounded-sm px-3 py-2.5"
+                        style={{ borderColor: C.border }}
+                      >
+                        <Car size={16} style={{ color: C.mutedDark }} />
+                        <span className="text-sm" style={{ color: miles ? C.ivory : C.faint }}>
+                          {miles ? `${miles} mi (estimated)` : "Select both addresses to estimate distance"}
+                        </span>
+                      </div>
+                      <div className="text-[11px]" style={{ color: C.faint }}>
+                        Distance is calculated automatically from your pickup and drop-off.
+                      </div>
                       {tripType === "airport" && (
                         <div className="text-[11px]" style={{ color: C.faint }}>
                           Flat rate applies up to {AIRPORT_FLAT_MILE_CAP} miles; beyond that, standard per-mile pricing applies.
