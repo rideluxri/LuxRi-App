@@ -94,18 +94,20 @@ const goldGradient = `linear-gradient(to bottom, ${C.goldLight}, ${C.goldDark})`
 const VEHICLES = {
   modely: {
     name: "Model Y",
+    description: "Black mid-size (Tesla Model Y — up to 4)",
     tier: "Signature",
     seats: 4,
     color: "#E6C875",
     dark: "#2A2311",
-    base: 12,
-    perMile: 4,
+    base: 11,
+    perMile: 3.75,
     airport: 40,
   },
   x7: {
     name: "BMW X7",
+    description: "Black SUV (BMW X7 — up to 5)",
     tier: "Reserve",
-    seats: 6,
+    seats: 5,
     color: "#B8912F",
     dark: "#221A08",
     base: 17,
@@ -2819,12 +2821,9 @@ export default function LuxRiBooking() {
                         <div className="flex items-center gap-3">
                           <Car size={20} color={vehicle === key ? v.color : C.mutedDark} />
                           <div>
-                            <div style={{ color: C.ivory }}>{v.name}</div>
-                            <div className="text-[11px] uppercase tracking-[0.12em]" style={{ color: v.color }}>
+                            <div style={{ color: C.ivory }}>{v.description}</div>
+                            <div className="text-[11px] uppercase tracking-[0.12em] mt-0.5" style={{ color: v.color }}>
                               {v.tier}
-                            </div>
-                            <div className="text-[11px] flex items-center gap-1 mt-1" style={{ color: C.mutedDark }}>
-                              <Users size={11} /> Seats {v.seats}
                             </div>
                           </div>
                         </div>
