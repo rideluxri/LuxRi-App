@@ -515,6 +515,7 @@ export default function LuxRiBooking() {
   const [editAccountDraft, setEditAccountDraft] = useState(null);
   const [accountEditSaving, setAccountEditSaving] = useState(false);
   const [accountsFilter, setAccountsFilter] = useState("customers"); // "customers" | "drivers"
+  const [expandedAccountEmail, setExpandedAccountEmail] = useState(null);
   const [driverInvites, setDriverInvites] = useState([]);
   const [inviteGenBusy, setInviteGenBusy] = useState(false);
   const [driverRides, setDriverRides] = useState([]);
@@ -2261,8 +2262,18 @@ export default function LuxRiBooking() {
                             <div style={{ color: C.mutedDark }}>{acct.phone}</div>
                             {acct.business && <div style={{ color: C.mutedDark }}>Business: {acct.business}</div>}
                             <div style={{ color: C.mutedDark }}>{rideCount} ride{rideCount === 1 ? "" : "s"}</div>
+                            {accountsFilter === "customers" && !acct.business && (
+                              <div style={{ color: C.mutedDark }}>
+                                {rideCount % LOYALTY_EVERY} of {LOYALTY_EVERY} rides toward next loyalty discount
+                              </div>
+                            )}
                             {accountsFilter === "customers" && (acct.referralRewardsAvailable || 0) > 0 && (
-                              <div style={{ color: C.gold }}>{acct.referralRewardsAvailable} referral reward{acct.referralRewardsAvailable > 1 ? "s" : ""}</div>
+                              <div style={{ color: C.gold }}>{acct.referralRewardsAvailable} referral reward{acct.referralRewardsAvailable > 1 ? "s" : ""} unused</div>
+                            )}
+                            {accountsFilter === "customers" && acct.referredBy && (
+                              <div style={{ color: C.mutedDark }}>
+                                Referred by code {acct.referredBy} {acct.referralConsumed ? "(credited)" : "(pending first ride)"}
+                              </div>
                             )}
                           </div>
                           <span
@@ -2273,6 +2284,13 @@ export default function LuxRiBooking() {
                           </span>
                         </div>
                         <div className="flex gap-2">
+                          <button
+                            onClick={() => setExpandedAccountEmail(expandedAccountEmail === acct.email ? null : acct.email)}
+                            className="flex-1 py-1.5 rounded-sm border"
+                            style={{ borderColor: C.gold, color: C.gold }}
+                          >
+                            {expandedAccountEmail === acct.email ? "Hide Rides" : "View Rides"}
+                          </button>
                           <button
                             onClick={() => startEditAccount(acct)}
                             className="flex-1 py-1.5 rounded-sm border"
@@ -2295,6 +2313,49 @@ export default function LuxRiBooking() {
                             Delete
                           </button>
                         </div>
+                        {expandedAccountEmail === acct.email && (
+                          <div className="space-y-1.5 pt-1 border-t" style={{ borderColor: C.border }}>
+                            {(dashBookings || [])
+                              .filter((b) =>
+                                accountsFilter === "customers"
+                                  ? normEmail(b.email || "") === normEmail(acct.email)
+                                  : normEmail(b.assignedDriverEmail || "") === normEmail(acct.email)
+                              )
+                              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                              .map((b) => (
+                                <div key={b.code} className="rounded-sm border p-2" style={{ borderColor: C.border }}>
+                                  <div className="flex justify-between">
+                                    <span style={{ color: C.ivory }}>
+                                      {b.date} · {VEHICLES[b.vehicle]?.name}
+                                      {accountsFilter === "drivers" && ` · ${b.name}`}
+                                    </span>
+                                    <span style={{ color: C.mutedDark }}>{b.status || "pending"}</span>
+                                  </div>
+                                  {accountsFilter === "customers" && (
+                                    <div style={{ color: C.mutedDark }}>
+                                      Total ${Number(b.total ?? b.fare).toFixed(0)}
+                                      {b.discountType && (
+                                        <span style={{ color: C.gold }}>
+                                          {" "}
+                                          · {b.discountType} discount −${Number(b.discountAmount || 0).toFixed(0)}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                  {accountsFilter === "drivers" && b.feedbackRating && (
+                                    <div style={{ color: C.gold }}>
+                                      {b.feedbackRating}/5{b.feedbackComment ? ` — "${b.feedbackComment}"` : ""}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            {(dashBookings || []).filter((b) =>
+                              accountsFilter === "customers"
+                                ? normEmail(b.email || "") === normEmail(acct.email)
+                                : normEmail(b.assignedDriverEmail || "") === normEmail(acct.email)
+                            ).length === 0 && <div style={{ color: C.mutedDark }}>No rides yet.</div>}
+                          </div>
+                        )}
                       </>
                     ) : (
                       <>
