@@ -94,7 +94,7 @@ const goldGradient = `linear-gradient(to bottom, ${C.goldLight}, ${C.goldDark})`
 const VEHICLES = {
   modely: {
     name: "Model Y",
-    description: "Black mid-size (Tesla Model Y — up to 4 passengers)",
+    description: "Black (Tesla Model Y — up to 4 passengers)",
     tier: "Signature",
     seats: 4,
     color: "#E6C875",
