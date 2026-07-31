@@ -510,6 +510,11 @@ export default function LuxRiBooking() {
   const [authStaffCode, setAuthStaffCode] = useState("");
   const [authAgreeTerms, setAuthAgreeTerms] = useState(false);
   const [drivers, setDrivers] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [editingAccountEmail, setEditingAccountEmail] = useState(null);
+  const [editAccountDraft, setEditAccountDraft] = useState(null);
+  const [accountEditSaving, setAccountEditSaving] = useState(false);
+  const [accountsFilter, setAccountsFilter] = useState("customers"); // "customers" | "drivers"
   const [driverInvites, setDriverInvites] = useState([]);
   const [inviteGenBusy, setInviteGenBusy] = useState(false);
   const [driverRides, setDriverRides] = useState([]);
@@ -1019,14 +1024,17 @@ export default function LuxRiBooking() {
 
       const acctList = await storage.list("account:");
       const driverAccts = [];
+      const customerAccts = [];
       for (const k of acctList.keys || []) {
         const res = await storage.get(k);
         if (res) {
           const a = JSON.parse(res.value);
           if (a.role === "driver") driverAccts.push(a);
+          else if (a.role !== "operator") customerAccts.push(a);
         }
       }
       setDrivers(driverAccts);
+      setCustomers(customerAccts);
 
       const inviteList = await storage.list("invite:");
       const invites = [];
@@ -1108,6 +1116,79 @@ export default function LuxRiBooking() {
   const cancelEditBooking = () => {
     setEditingCode(null);
     setEditDraft(null);
+  };
+
+  const startEditAccount = (acct) => {
+    setEditingAccountEmail(acct.email);
+    setEditAccountDraft({
+      name: acct.name || "",
+      phone: acct.phone || "",
+      business: acct.business || "",
+      role: acct.role || "customer",
+    });
+  };
+
+  const cancelEditAccount = () => {
+    setEditingAccountEmail(null);
+    setEditAccountDraft(null);
+  };
+
+  const saveAccountEdit = async (acct) => {
+    if (!editAccountDraft) return;
+    setAccountEditSaving(true);
+    try {
+      const updated = { ...acct, ...editAccountDraft };
+      await storage.set(`account:${acct.email}`, JSON.stringify(updated));
+      if (updated.role === "driver") {
+        setDrivers((prev) => {
+          const withoutOld = prev.filter((d) => d.email !== acct.email);
+          return [...withoutOld, updated];
+        });
+        setCustomers((prev) => prev.filter((c) => c.email !== acct.email));
+      } else {
+        setCustomers((prev) => {
+          const withoutOld = prev.filter((c) => c.email !== acct.email);
+          return [...withoutOld, updated];
+        });
+        setDrivers((prev) => prev.filter((d) => d.email !== acct.email));
+      }
+      setEditingAccountEmail(null);
+      setEditAccountDraft(null);
+    } catch {
+      // no-op
+    } finally {
+      setAccountEditSaving(false);
+    }
+  };
+
+  const resetAccountPassword = async (acct) => {
+    const newPass = window.prompt(`Set a new password for ${acct.name} (${acct.email}):`);
+    if (!newPass) return;
+    try {
+      const updated = { ...acct, pass: simpleHash(newPass) };
+      await storage.set(`account:${acct.email}`, JSON.stringify(updated));
+      if (updated.role === "driver") {
+        setDrivers((prev) => prev.map((d) => (d.email === acct.email ? updated : d)));
+      } else {
+        setCustomers((prev) => prev.map((c) => (c.email === acct.email ? updated : c)));
+      }
+      window.alert(`Password updated. Give ${acct.name} the new password directly — it isn't emailed or texted automatically.`);
+    } catch {
+      // no-op
+    }
+  };
+
+  const deleteAccount = async (acct) => {
+    const ok = window.confirm(`Permanently delete ${acct.name}'s account (${acct.email})? This can't be undone. Their past rides stay on record.`);
+    if (!ok) return;
+    try {
+      const res = await storage.get(`account:${acct.email}`);
+      if (res) await storage.delete(`account:${acct.email}`);
+      setDrivers((prev) => prev.filter((d) => d.email !== acct.email));
+      setCustomers((prev) => prev.filter((c) => c.email !== acct.email));
+    } catch {
+      // no-op
+    }
   };
 
   const saveBookingEdit = async (b) => {
@@ -2125,6 +2206,150 @@ export default function LuxRiBooking() {
               <div className="text-[11px]" style={{ color: C.faint }}>
                 Give a driver this code — they'll enter it as a "staff code" when creating their account.
               </div>
+            </div>
+
+            <div className="border rounded-sm p-3 space-y-3" style={{ borderColor: C.border }}>
+              <div className="flex items-center justify-between">
+                <div className="text-[11px] tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
+                  Accounts
+                </div>
+                <div className="flex gap-1.5">
+                  <button
+                    onClick={() => setAccountsFilter("customers")}
+                    className="text-[11px] px-2 py-1 rounded-sm border"
+                    style={
+                      accountsFilter === "customers"
+                        ? { borderColor: C.gold, color: C.gold }
+                        : { borderColor: C.border, color: C.mutedDark }
+                    }
+                  >
+                    Customers ({customers.length})
+                  </button>
+                  <button
+                    onClick={() => setAccountsFilter("drivers")}
+                    className="text-[11px] px-2 py-1 rounded-sm border"
+                    style={
+                      accountsFilter === "drivers"
+                        ? { borderColor: C.gold, color: C.gold }
+                        : { borderColor: C.border, color: C.mutedDark }
+                    }
+                  >
+                    Drivers ({drivers.length})
+                  </button>
+                </div>
+              </div>
+
+              {(accountsFilter === "customers" ? customers : drivers).length === 0 && (
+                <div className="text-xs" style={{ color: C.mutedDark }}>
+                  No {accountsFilter} yet.
+                </div>
+              )}
+
+              {(accountsFilter === "customers" ? customers : drivers).map((acct) => {
+                const rideCount = (dashBookings || []).filter(
+                  (b) => normEmail(b.email || "") === normEmail(acct.email) && b.status !== "cancelled"
+                ).length;
+                const isEditing = editingAccountEmail === acct.email;
+                return (
+                  <div key={acct.email} className="border rounded-sm p-3 space-y-2 text-xs" style={{ borderColor: C.border }}>
+                    {!isEditing ? (
+                      <>
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div style={{ color: C.ivory }}>{acct.name}</div>
+                            <div style={{ color: C.mutedDark }}>{acct.email}</div>
+                            <div style={{ color: C.mutedDark }}>{acct.phone}</div>
+                            {acct.business && <div style={{ color: C.mutedDark }}>Business: {acct.business}</div>}
+                            <div style={{ color: C.mutedDark }}>{rideCount} ride{rideCount === 1 ? "" : "s"}</div>
+                            {accountsFilter === "customers" && (acct.referralRewardsAvailable || 0) > 0 && (
+                              <div style={{ color: C.gold }}>{acct.referralRewardsAvailable} referral reward{acct.referralRewardsAvailable > 1 ? "s" : ""}</div>
+                            )}
+                          </div>
+                          <span
+                            className="text-[10px] uppercase tracking-wide px-2 py-1 rounded-sm border shrink-0"
+                            style={{ borderColor: C.border, color: C.mutedDark }}
+                          >
+                            {acct.role || "customer"}
+                          </span>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => startEditAccount(acct)}
+                            className="flex-1 py-1.5 rounded-sm border"
+                            style={{ borderColor: C.border, color: C.mutedDark }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => resetAccountPassword(acct)}
+                            className="flex-1 py-1.5 rounded-sm border"
+                            style={{ borderColor: C.border, color: C.mutedDark }}
+                          >
+                            Reset Password
+                          </button>
+                          <button
+                            onClick={() => deleteAccount(acct)}
+                            className="flex-1 py-1.5 rounded-sm border"
+                            style={{ borderColor: C.error, color: C.error }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <input
+                          value={editAccountDraft.name}
+                          onChange={(e) => setEditAccountDraft({ ...editAccountDraft, name: e.target.value })}
+                          placeholder="Name"
+                          className="w-full rounded-sm px-2 py-1.5 border"
+                          style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
+                        />
+                        <input
+                          value={editAccountDraft.phone}
+                          onChange={(e) => setEditAccountDraft({ ...editAccountDraft, phone: e.target.value })}
+                          placeholder="Phone"
+                          className="w-full rounded-sm px-2 py-1.5 border"
+                          style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
+                        />
+                        <input
+                          value={editAccountDraft.business}
+                          onChange={(e) => setEditAccountDraft({ ...editAccountDraft, business: e.target.value })}
+                          placeholder="Business (optional)"
+                          className="w-full rounded-sm px-2 py-1.5 border"
+                          style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
+                        />
+                        <select
+                          value={editAccountDraft.role}
+                          onChange={(e) => setEditAccountDraft({ ...editAccountDraft, role: e.target.value })}
+                          className="w-full rounded-sm px-2 py-1.5 border"
+                          style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
+                        >
+                          <option value="customer">Customer</option>
+                          <option value="driver">Driver</option>
+                        </select>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => saveAccountEdit(acct)}
+                            disabled={accountEditSaving}
+                            className="flex-1 py-1.5 rounded-sm disabled:opacity-40"
+                            style={{ background: goldGradient, color: C.bg }}
+                          >
+                            {accountEditSaving ? "Saving…" : "Save"}
+                          </button>
+                          <button
+                            onClick={cancelEditAccount}
+                            className="flex-1 py-1.5 rounded-sm border"
+                            style={{ borderColor: C.border, color: C.mutedDark }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             {(!dashBookings || dashBookings.length === 0) && (
