@@ -58,7 +58,7 @@ const TERMS_SECTIONS = [
 
 const BUFFER_MINUTES = 30;
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const DEFAULT_HOURS = { days: [0, 1, 2, 3, 4, 5, 6], start: "00:00", end: "23:59", blockedDates: [] };
+const DEFAULT_HOURS = { days: [0, 1, 2, 3, 4, 5, 6], start: "00:00", end: "23:59", blockedDates: [], blockedPeriods: [] };
 const CANCEL_CUTOFF_MINUTES = 60;
 const LATE_CANCEL_FEE_PCT = 25;
 const LOYALTY_EVERY = 5;
@@ -314,11 +314,22 @@ function dayOfWeek(dateStr) {
   return new Date(dateStr + "T00:00:00").getDay();
 }
 
+function isWithinBlockedPeriod(dateStr, timeStr, periods) {
+  if (!periods || periods.length === 0) return false;
+  const target = new Date(`${dateStr}T${timeStr}:00`);
+  return periods.some((p) => {
+    const start = new Date(`${p.startDate}T${p.startTime || "00:00"}:00`);
+    const end = new Date(`${p.endDate}T${p.endTime || "23:59"}:00`);
+    return target >= start && target <= end;
+  });
+}
+
 function withinHours(dateStr, timeStr, hours) {
   if (!dateStr || !timeStr) return true;
   const dow = dayOfWeek(dateStr);
   if (!hours.days.includes(dow)) return false;
   if ((hours.blockedDates || []).includes(dateStr)) return false;
+  if (isWithinBlockedPeriod(dateStr, timeStr, hours.blockedPeriods)) return false;
   const t = timeToMinutes(timeStr);
   return t >= timeToMinutes(hours.start) && t <= timeToMinutes(hours.end);
 }
@@ -552,6 +563,10 @@ export default function LuxRiBooking() {
   const [hours, setHours] = useState(DEFAULT_HOURS);
   const [hoursSaving, setHoursSaving] = useState(false);
   const [blockedDateInput, setBlockedDateInput] = useState("");
+  const [blockedPeriodStartDate, setBlockedPeriodStartDate] = useState("");
+  const [blockedPeriodStartTime, setBlockedPeriodStartTime] = useState("");
+  const [blockedPeriodEndDate, setBlockedPeriodEndDate] = useState("");
+  const [blockedPeriodEndTime, setBlockedPeriodEndTime] = useState("");
   const [promos, setPromos] = useState({});
   const [promoBusinessInput, setPromoBusinessInput] = useState("");
   const [promoPctInput, setPromoPctInput] = useState("");
@@ -1216,6 +1231,25 @@ export default function LuxRiBooking() {
 
   const removeBlockedDate = (d) => {
     saveHours({ ...hours, blockedDates: (hours.blockedDates || []).filter((x) => x !== d) });
+  };
+
+  const addBlockedPeriod = () => {
+    if (!blockedPeriodStartDate || !blockedPeriodStartTime || !blockedPeriodEndDate || !blockedPeriodEndTime) return;
+    const period = {
+      startDate: blockedPeriodStartDate,
+      startTime: blockedPeriodStartTime,
+      endDate: blockedPeriodEndDate,
+      endTime: blockedPeriodEndTime,
+    };
+    saveHours({ ...hours, blockedPeriods: [...(hours.blockedPeriods || []), period] });
+    setBlockedPeriodStartDate("");
+    setBlockedPeriodStartTime("");
+    setBlockedPeriodEndDate("");
+    setBlockedPeriodEndTime("");
+  };
+
+  const removeBlockedPeriod = (index) => {
+    saveHours({ ...hours, blockedPeriods: (hours.blockedPeriods || []).filter((_, i) => i !== index) });
   };
 
   const fetchPromos = async () => {
@@ -1965,6 +1999,46 @@ export default function LuxRiBooking() {
                   ))}
                 </div>
               )}
+
+              <div className="pt-2 border-t space-y-2" style={{ borderColor: C.border }}>
+                <div className="text-[11px] tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
+                  Block a Date/Time Range
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Field placeholder="" value={blockedPeriodStartDate} onChange={setBlockedPeriodStartDate} type="date" />
+                  <Field placeholder="" value={blockedPeriodStartTime} onChange={setBlockedPeriodStartTime} type="time" />
+                </div>
+                <div className="text-[10px] uppercase tracking-wide" style={{ color: C.faint }}>to</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Field placeholder="" value={blockedPeriodEndDate} onChange={setBlockedPeriodEndDate} type="date" />
+                  <Field placeholder="" value={blockedPeriodEndTime} onChange={setBlockedPeriodEndTime} type="time" />
+                </div>
+                <button
+                  onClick={addBlockedPeriod}
+                  className="w-full py-2 rounded-sm text-xs border"
+                  style={{ borderColor: C.border, color: C.mutedDark }}
+                >
+                  Block This Range
+                </button>
+                {(hours.blockedPeriods || []).length > 0 && (
+                  <div className="space-y-1.5">
+                    {hours.blockedPeriods.map((p, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between text-[11px] px-2 py-1.5 rounded-sm border"
+                        style={{ borderColor: C.border, color: C.mutedDark }}
+                      >
+                        <span>
+                          {p.startDate} {p.startTime} → {p.endDate} {p.endTime}
+                        </span>
+                        <button onClick={() => removeBlockedPeriod(i)} style={{ color: C.error }}>
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="border rounded-sm p-3 space-y-2" style={{ borderColor: C.border }}>
