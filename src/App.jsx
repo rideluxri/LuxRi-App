@@ -1551,8 +1551,7 @@ export default function LuxRiBooking() {
 
   const cancelBooking = async (b, onDone) => {
     const minsLeft = minutesUntilPickup(b);
-    if (minsLeft < 0) return; // pickup time has already passed
-    const isLate = minsLeft < CANCEL_CUTOFF_MINUTES;
+    const isLate = minsLeft >= 0 && minsLeft < CANCEL_CUTOFF_MINUTES;
     const fareAmount = Number(b.total ?? b.fare) || 0;
     const fee = isLate ? Math.round(fareAmount * (LATE_CANCEL_FEE_PCT / 100) * 100) / 100 : 0;
     if (isLate) {
@@ -2532,19 +2531,26 @@ export default function LuxRiBooking() {
                 <div className="text-[11px] tracking-wide" style={{ color: C.faintest }}>{r.code}</div>
                 {r.status !== "cancelled" && r.status !== "completed" && (
                   <div className="space-y-1.5 pt-1">
-                    {minutesUntilPickup(r) < CANCEL_CUTOFF_MINUTES && (
+                    {minutesUntilPickup(r) < 0 && (
+                      <div className="text-[11px]" style={{ color: C.faint }}>
+                        This ride's scheduled time has passed.
+                      </div>
+                    )}
+                    {minutesUntilPickup(r) >= 0 && minutesUntilPickup(r) < CANCEL_CUTOFF_MINUTES && (
                       <div className="text-[11px]" style={{ color: C.error }}>
                         Within 1 hour of pickup — cancelling now incurs a {LATE_CANCEL_FEE_PCT}% fee. Rescheduling is still free.
                       </div>
                     )}
                     <div className="flex gap-2">
-                      <button
-                        onClick={() => enterReschedule(r)}
-                        className="flex-1 py-2 rounded-sm text-xs border"
-                        style={{ borderColor: C.gold, color: C.gold }}
-                      >
-                        Reschedule
-                      </button>
+                      {minutesUntilPickup(r) >= 0 && (
+                        <button
+                          onClick={() => enterReschedule(r)}
+                          className="flex-1 py-2 rounded-sm text-xs border"
+                          style={{ borderColor: C.gold, color: C.gold }}
+                        >
+                          Reschedule
+                        </button>
+                      )}
                       <button
                         onClick={() => cancelBooking(r)}
                         className="flex-1 py-2 rounded-sm text-xs border"
@@ -2638,19 +2644,26 @@ export default function LuxRiBooking() {
                 )}
                 {lookupBooking.status !== "cancelled" && lookupBooking.status !== "completed" && (
                   <div className="space-y-1.5 pt-1">
-                    {minutesUntilPickup(lookupBooking) < CANCEL_CUTOFF_MINUTES && (
+                    {minutesUntilPickup(lookupBooking) < 0 && (
+                      <div className="text-[11px]" style={{ color: C.faint }}>
+                        This ride's scheduled time has passed.
+                      </div>
+                    )}
+                    {minutesUntilPickup(lookupBooking) >= 0 && minutesUntilPickup(lookupBooking) < CANCEL_CUTOFF_MINUTES && (
                       <div className="text-[11px]" style={{ color: C.error }}>
                         Within 1 hour of pickup — cancelling now incurs a {LATE_CANCEL_FEE_PCT}% fee. Rescheduling is still free.
                       </div>
                     )}
                     <div className="flex gap-2">
-                      <button
-                        onClick={() => enterReschedule(lookupBooking)}
-                        className="flex-1 py-2 rounded-sm text-xs border"
-                        style={{ borderColor: C.gold, color: C.gold }}
-                      >
-                        Reschedule
-                      </button>
+                      {minutesUntilPickup(lookupBooking) >= 0 && (
+                        <button
+                          onClick={() => enterReschedule(lookupBooking)}
+                          className="flex-1 py-2 rounded-sm text-xs border"
+                          style={{ borderColor: C.gold, color: C.gold }}
+                        >
+                          Reschedule
+                        </button>
+                      )}
                       <button
                         onClick={() => cancelBooking(lookupBooking, setLookupBooking)}
                         className="flex-1 py-2 rounded-sm text-xs border"
