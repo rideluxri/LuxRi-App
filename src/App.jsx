@@ -17,6 +17,7 @@ const MODE_PATHS = {
   dashboard: "/dashboard",
   driverRides: "/my-rides-driver",
   terms: "/terms",
+  install: "/get-the-app",
 };
 
 const TERMS_SECTIONS = [
@@ -110,8 +111,8 @@ const VEHICLES = {
     seats: 5,
     color: "#B8912F",
     dark: "#221A08",
-    base: 17,
-    perMile: 5.25,
+    base: 19,
+    perMile: 5.75,
     airport: 55,
   },
 };
@@ -266,6 +267,13 @@ function simpleHash(str) {
 function smsLink(toPhone, body) {
   const digits = (toPhone || "").replace(/[^\d+]/g, "");
   return `sms:${digits}?&body=${encodeURIComponent(body)}`;
+}
+
+function detectPlatform() {
+  if (typeof navigator === "undefined") return "ios";
+  const ua = navigator.userAgent || "";
+  if (/android/i.test(ua)) return "android";
+  return "ios";
 }
 
 function normEmail(e) {
@@ -500,6 +508,7 @@ function FeedbackForm({ booking, theme: T, onSubmitted }) {
 export default function LuxRiBooking() {
   const [mode, setMode] = useState("welcome"); // welcome | signin | signup | booking | history | lookup | dashboard | driverRides
   const [menuOpen, setMenuOpen] = useState(false);
+  const [installTab, setInstallTab] = useState(detectPlatform());
   const [account, setAccount] = useState(null); // {email, name, phone}
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
@@ -3009,6 +3018,92 @@ export default function LuxRiBooking() {
           </div>
         )}
 
+        {mode === "install" && (
+          <div
+            className="rounded-sm border p-6 sm:p-8 space-y-4"
+            style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "system-ui, sans-serif" }}
+          >
+            <div className="text-center space-y-1">
+              <div className="text-lg" style={{ color: C.ivory }}>Get LuxRi on Your Home Screen</div>
+              <div className="text-xs" style={{ color: C.mutedDark }}>
+                Takes 10 seconds — no app store, no download.
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setInstallTab("ios")}
+                className="py-2.5 text-xs tracking-[0.1em] uppercase border rounded-sm"
+                style={
+                  installTab === "ios"
+                    ? { borderColor: C.gold, color: C.ivory, background: C.goldWash }
+                    : { borderColor: C.border, color: C.mutedDark }
+                }
+              >
+                iPhone
+              </button>
+              <button
+                onClick={() => setInstallTab("android")}
+                className="py-2.5 text-xs tracking-[0.1em] uppercase border rounded-sm"
+                style={
+                  installTab === "android"
+                    ? { borderColor: C.gold, color: C.ivory, background: C.goldWash }
+                    : { borderColor: C.border, color: C.mutedDark }
+                }
+              >
+                Android
+              </button>
+            </div>
+
+            {installTab === "ios" ? (
+              <ol className="space-y-3 text-sm" style={{ color: C.ivory }}>
+                <li className="flex gap-3">
+                  <span style={{ color: C.gold }}>1.</span>
+                  <span>
+                    Tap the <strong>Share</strong> icon at the bottom of Safari — the square with an arrow
+                    pointing up.
+                  </span>
+                </li>
+                <li className="flex gap-3">
+                  <span style={{ color: C.gold }}>2.</span>
+                  <span>Scroll down and tap <strong>"Add to Home Screen."</strong></span>
+                </li>
+                <li className="flex gap-3">
+                  <span style={{ color: C.gold }}>3.</span>
+                  <span>Tap <strong>Add</strong> in the top corner.</span>
+                </li>
+              </ol>
+            ) : (
+              <ol className="space-y-3 text-sm" style={{ color: C.ivory }}>
+                <li className="flex gap-3">
+                  <span style={{ color: C.gold }}>1.</span>
+                  <span>
+                    Tap the <strong>⋮ menu</strong> in the top-right corner of Chrome.
+                  </span>
+                </li>
+                <li className="flex gap-3">
+                  <span style={{ color: C.gold }}>2.</span>
+                  <span>
+                    Tap <strong>"Add to Home Screen"</strong> or <strong>"Install app."</strong>
+                  </span>
+                </li>
+                <li className="flex gap-3">
+                  <span style={{ color: C.gold }}>3.</span>
+                  <span>Confirm, and you're set.</span>
+                </li>
+              </ol>
+            )}
+
+            <div className="text-[11px] text-center pt-1" style={{ color: C.faint }}>
+              Once added, LuxRi opens full-screen from your home screen, just like a regular app.
+            </div>
+
+            <button onClick={() => navigate("welcome")} className="w-full text-xs tracking-wide pt-2" style={{ color: C.faintest }}>
+              Back
+            </button>
+          </div>
+        )}
+
         {mode === "booking" && (
           <>
             <div className="mb-8">
@@ -3430,9 +3525,12 @@ export default function LuxRiBooking() {
           style={{ color: C.faintest, fontFamily: "system-ui, sans-serif" }}
         >
           LuxRi Driving Services · One-Way · Round Trip · Airport
-          <div className="mt-1">
+          <div className="mt-1 flex items-center justify-center gap-3">
             <button onClick={() => navigate("terms")} className="underline" style={{ color: C.faintest }}>
               Terms & Cancellation Policy
+            </button>
+            <button onClick={() => navigate("install")} className="underline" style={{ color: C.faintest }}>
+              Add to Home Screen
             </button>
           </div>
         </div>
