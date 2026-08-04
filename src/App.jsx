@@ -744,6 +744,37 @@ export default function LuxRiBooking() {
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
+  // Stay signed in across app reloads/reopens — similar to how Uber/Lyft
+  // don't make you log in every time. We just remember which account was
+  // last signed in (via localStorage) and reload it fresh from storage.
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("luxri_session_email");
+    if (!savedEmail) return;
+    (async () => {
+      try {
+        const res = await storage.get(`account:${normEmail(savedEmail)}`);
+        if (!res) {
+          localStorage.removeItem("luxri_session_email");
+          return;
+        }
+        const acct = JSON.parse(res.value);
+        setAccount(acct);
+        if (acct.role === "operator") {
+          await loadDashboard();
+          navigate("dashboard", { replace: true });
+        } else if (acct.role === "driver") {
+          await loadDriverRides(acct);
+          navigate("driverRides", { replace: true });
+        } else {
+          await loadHistoryFor(acct);
+          enterBookingAs(acct);
+        }
+      } catch {
+        // if anything goes wrong, just fall back to the normal welcome screen
+      }
+    })();
+  }, []);
+
   const navigate = (nextMode, opts = {}) => {
     setMode(nextMode);
     const path = MODE_PATHS[nextMode] || "/";
@@ -939,6 +970,7 @@ export default function LuxRiBooking() {
       };
       await storage.set(key, JSON.stringify(acct));
       setAccount(acct);
+      localStorage.setItem("luxri_session_email", acct.email);
 
       if (role === "operator") {
         await loadDashboard();
@@ -987,6 +1019,7 @@ export default function LuxRiBooking() {
         return;
       }
       setAccount(acct);
+      localStorage.setItem("luxri_session_email", acct.email);
       if (acct.role === "operator") {
         await loadDashboard();
         navigate("dashboard");
@@ -1005,6 +1038,7 @@ export default function LuxRiBooking() {
   };
 
   const handleSignOut = () => {
+    localStorage.removeItem("luxri_session_email");
     setAccount(null);
     setHistory([]);
     setDashBookings(null);
