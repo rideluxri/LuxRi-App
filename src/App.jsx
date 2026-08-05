@@ -186,30 +186,43 @@ function computeDashStats(bookings) {
   const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   let totalRides = 0;
   let totalRevenue = 0;
+  let totalTips = 0;
   let weekRides = 0;
   let weekRevenue = 0;
+  let weekTips = 0;
   let monthRides = 0;
   let monthRevenue = 0;
+  let monthTips = 0;
   let cancelledCount = 0;
   const byVehicle = {};
   const byDay = [0, 0, 0, 0, 0, 0, 0];
 
   for (const b of list) {
     const amt = Number(b.total ?? b.fare) || 0;
+    const tipAmt = Number(b.tipAmount) || 0;
     const bookingDate = b.date ? new Date(`${b.date}T00:00:00`) : null;
     if (b.status === "cancelled") {
       cancelledCount++;
       continue;
     }
     totalRides++;
-    if (b.status === "completed") totalRevenue += amt;
+    if (b.status === "completed") {
+      totalRevenue += amt;
+      totalTips += tipAmt;
+    }
     if (bookingDate && bookingDate >= weekAgo) {
       weekRides++;
-      if (b.status === "completed") weekRevenue += amt;
+      if (b.status === "completed") {
+        weekRevenue += amt;
+        weekTips += tipAmt;
+      }
     }
     if (bookingDate && bookingDate >= monthAgo) {
       monthRides++;
-      if (b.status === "completed") monthRevenue += amt;
+      if (b.status === "completed") {
+        monthRevenue += amt;
+        monthTips += tipAmt;
+      }
     }
     byVehicle[b.vehicle] = (byVehicle[b.vehicle] || 0) + 1;
     if (bookingDate) byDay[bookingDate.getDay()] += 1;
@@ -223,10 +236,13 @@ function computeDashStats(bookings) {
   return {
     totalRides,
     totalRevenue,
+    totalTips,
     weekRides,
     weekRevenue,
+    weekTips,
     monthRides,
     monthRevenue,
+    monthTips,
     cancelledCount,
     cancellationRate,
     byVehicle,
@@ -2106,16 +2122,25 @@ export default function LuxRiBooking() {
                   <div className="text-lg" style={{ color: C.gold }}>{dashStats.weekRides}</div>
                   <div className="text-[10px] uppercase tracking-wide" style={{ color: C.mutedDark }}>Rides · 7 days</div>
                   <div className="text-[11px]" style={{ color: C.mutedDark }}>${dashStats.weekRevenue.toFixed(0)}</div>
+                  {dashStats.weekTips > 0 && (
+                    <div className="text-[10px]" style={{ color: C.gold }}>+${dashStats.weekTips.toFixed(0)} tips</div>
+                  )}
                 </div>
                 <div>
                   <div className="text-lg" style={{ color: C.gold }}>{dashStats.monthRides}</div>
                   <div className="text-[10px] uppercase tracking-wide" style={{ color: C.mutedDark }}>Rides · 30 days</div>
                   <div className="text-[11px]" style={{ color: C.mutedDark }}>${dashStats.monthRevenue.toFixed(0)}</div>
+                  {dashStats.monthTips > 0 && (
+                    <div className="text-[10px]" style={{ color: C.gold }}>+${dashStats.monthTips.toFixed(0)} tips</div>
+                  )}
                 </div>
                 <div>
                   <div className="text-lg" style={{ color: C.gold }}>{dashStats.totalRides}</div>
                   <div className="text-[10px] uppercase tracking-wide" style={{ color: C.mutedDark }}>Rides · all-time</div>
                   <div className="text-[11px]" style={{ color: C.mutedDark }}>${dashStats.totalRevenue.toFixed(0)}</div>
+                  {dashStats.totalTips > 0 && (
+                    <div className="text-[10px]" style={{ color: C.gold }}>+${dashStats.totalTips.toFixed(0)} tips</div>
+                  )}
                 </div>
               </div>
               <div className="flex justify-between text-xs pt-1 border-t" style={{ borderColor: C.border, color: C.mutedDark }}>
@@ -2561,6 +2586,11 @@ export default function LuxRiBooking() {
                         {b.date} · {b.time} · {b.tripType} · ${Number(b.total ?? b.fare).toFixed(0)}
                         {b.tripType === "round" && b.returnDate ? ` · return ${b.returnDate} ${b.returnTime}` : ""}
                       </div>
+                      <div className="text-xs" style={{ color: Number(b.tipAmount) > 0 ? C.gold : C.mutedDark }}>
+                        {Number(b.tipAmount) > 0
+                          ? `Fare $${Number(b.fare).toFixed(0)} + tip $${Number(b.tipAmount).toFixed(0)} = $${Number(b.total ?? b.fare).toFixed(0)}`
+                          : "No tip included"}
+                      </div>
                       <div className="text-xs" style={{ color: C.mutedDark }}>{b.pickup} → {b.dropoff}</div>
                       <div className="text-xs">
                         <a href={`tel:${b.phone}`} style={{ color: C.mutedDark }}>
@@ -2829,6 +2859,11 @@ export default function LuxRiBooking() {
                       )}
                       {b.date} · {b.time} · {b.tripType}
                       {b.tripType === "round" && b.returnDate ? ` · return ${b.returnDate} ${b.returnTime}` : ""}
+                    </div>
+                    <div className="text-xs" style={{ color: Number(b.tipAmount) > 0 ? C.gold : C.mutedDark }}>
+                      {Number(b.tipAmount) > 0
+                        ? `Fare $${Number(b.fare).toFixed(0)} + tip $${Number(b.tipAmount).toFixed(0)} = $${Number(b.total ?? b.fare).toFixed(0)}`
+                        : "No tip included"}
                     </div>
                     <div className="text-xs" style={{ color: C.mutedDark }}>{b.pickup} → {b.dropoff}</div>
                     <div className="text-xs">
