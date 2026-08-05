@@ -1183,7 +1183,9 @@ export default function LuxRiBooking() {
       dropoff: b.dropoff,
       date: b.date,
       time: b.time,
+      tripType: b.tripType,
       vehicle: b.vehicle,
+      miles: b.miles || "",
       passengers: b.passengers || "",
       luggage: b.luggage || "",
       phone: b.phone || "",
@@ -1269,11 +1271,32 @@ export default function LuxRiBooking() {
     }
   };
 
+  const recomputeBookingPricing = (b, tripType, vehicleKey, miles) => {
+    const fare = estimateFare(tripType, vehicleKey, miles);
+    let discountAmount = 0;
+    if (b.discountType === "loyalty") {
+      discountAmount = Math.round(fare * 0.5 * 100) / 100;
+    } else if (b.discountType === "referral") {
+      discountAmount = Math.round(fare * (REFERRAL_PCT / 100) * 100) / 100;
+    } else if (b.discountType === "firstRide") {
+      discountAmount = Math.round(fare * (FIRST_RIDE_PCT / 100) * 100) / 100;
+    } else if (b.discountType === "business") {
+      const pct = promos[normBusiness(b.business)] || 0;
+      discountAmount = Math.round(fare * (pct / 100) * 100) / 100;
+    }
+    const effectiveFare = Math.round((fare - discountAmount) * 100) / 100;
+    const tipAmount =
+      b.tipMode === "custom" ? Number(b.tipAmount) || 0 : Math.round(fare * ((b.tipPct || 0) / 100) * 100) / 100;
+    const total = Math.round((effectiveFare + tipAmount) * 100) / 100;
+    return { fare, discountAmount, effectiveFare, tipAmount, total };
+  };
+
   const saveBookingEdit = async (b) => {
     if (!editDraft) return;
     setEditSaving(true);
     try {
-      const updated = { ...b, ...editDraft };
+      const pricing = recomputeBookingPricing(b, editDraft.tripType, editDraft.vehicle, editDraft.miles);
+      const updated = { ...b, ...editDraft, ...pricing };
       await storage.set(`booking:${b.code}`, JSON.stringify(updated));
       setDashBookings((prev) => prev.map((x) => (x.code === b.code ? updated : x)));
       if (updated.assignedDriverEmail && normEmail(updated.assignedDriverEmail) === normEmail(account?.email || "")) {
@@ -2622,6 +2645,30 @@ export default function LuxRiBooking() {
                           className="rounded-xl px-2 py-1.5 text-xs border"
                           style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
                         />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <select
+                          value={editDraft.tripType}
+                          onChange={(e) => setEditDraft({ ...editDraft, tripType: e.target.value })}
+                          className="rounded-xl px-2 py-1.5 text-xs border"
+                          style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
+                        >
+                          <option value="oneway">One-Way</option>
+                          <option value="round">Round Trip</option>
+                          <option value="airport">Airport</option>
+                        </select>
+                        <input
+                          value={editDraft.miles}
+                          onChange={(e) => setEditDraft({ ...editDraft, miles: e.target.value })}
+                          placeholder="Miles"
+                          type="number"
+                          className="rounded-xl px-2 py-1.5 text-xs border"
+                          style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
+                        />
+                      </div>
+                      <div className="text-[11px]" style={{ color: C.gold }}>
+                        New total: $
+                        {recomputeBookingPricing(b, editDraft.tripType, editDraft.vehicle, editDraft.miles).total.toFixed(2)}
                       </div>
                       <div className="grid grid-cols-3 gap-2">
                         <select
