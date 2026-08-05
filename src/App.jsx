@@ -1847,14 +1847,20 @@ export default function LuxRiBooking() {
 
   return (
     <div
-      className="min-h-screen w-full flex justify-center py-10 px-4"
-      style={{ background: C.bg, color: C.ivory, fontFamily: "'Fraunces', Georgia, serif" }}
+      className="min-h-screen w-full flex justify-center px-4"
+      style={{
+        background: C.bg,
+        color: C.ivory,
+        fontFamily: "'Fraunces', Georgia, serif",
+        paddingTop: "calc(env(safe-area-inset-top, 0px) + 2.5rem)",
+        paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 2.5rem)",
+      }}
     >
       <div className="w-full max-w-xl">
         {/* Header */}
         <div className="mb-10 text-center relative">
           <div className="absolute right-0 top-0" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
-            <button onClick={() => setMenuOpen((v) => !v)} style={{ color: C.mutedDark }} title="Menu">
+            <button onClick={() => setMenuOpen((v) => !v)} className="p-2 -m-2" style={{ color: C.mutedDark }} title="Menu">
               <Menu size={18} />
             </button>
             {menuOpen && (
