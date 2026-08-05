@@ -814,15 +814,16 @@ export default function LuxRiBooking() {
     }
   }, [pickupCoords, dropoffCoords, tripType]);
 
-  const enableNotifications = async () => {
+  const enableNotifications = async (targetEmail) => {
     if (typeof Notification === "undefined") return;
     const perm = await Notification.requestPermission();
     setNotifPermission(perm);
     if (perm !== "granted") return;
 
-    // Real push (works even with the app closed) needs a signed-in account
-    // to know who to notify, a service worker, and a VAPID key configured.
-    if (!account?.email || !VAPID_PUBLIC_KEY || !("serviceWorker" in navigator)) return;
+    // Real push (works even with the app closed) needs an email to know
+    // who to notify, a service worker, and a VAPID key configured.
+    const subEmail = targetEmail || account?.email;
+    if (!subEmail || !VAPID_PUBLIC_KEY || !("serviceWorker" in navigator)) return;
     try {
       const registration = await navigator.serviceWorker.ready;
       let subscription = await registration.pushManager.getSubscription();
@@ -832,7 +833,7 @@ export default function LuxRiBooking() {
           applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
         });
       }
-      await storage.set(`pushsub:${normEmail(account.email)}`, JSON.stringify(subscription.toJSON()));
+      await storage.set(`pushsub:${normEmail(subEmail)}`, JSON.stringify(subscription.toJSON()));
     } catch {
       // in-tab notifications (already enabled above) still work as a fallback
     }
@@ -2771,6 +2772,16 @@ export default function LuxRiBooking() {
           >
             <div className="text-xs tracking-[0.15em] uppercase mb-1" style={{ color: C.mutedDark }}>My Rides</div>
 
+            {account && notifPermission !== "granted" && notifPermission !== "unsupported" && (
+              <button
+                onClick={() => enableNotifications(account.email)}
+                className="w-full py-2.5 rounded-sm border text-xs tracking-wide flex items-center justify-center gap-1.5"
+                style={{ borderColor: C.gold, color: C.gold }}
+              >
+                <Bell size={13} /> Get Ride Updates In-App
+              </button>
+            )}
+
             {account && !account.business && (
               <div className="text-xs" style={{ color: C.mutedDark }}>
                 {nonCancelledRides % LOYALTY_EVERY} of {LOYALTY_EVERY} rides toward your next 50% off ride
@@ -3470,6 +3481,13 @@ export default function LuxRiBooking() {
                     >
                       Email Receipt
                     </a>
+                    <button
+                      onClick={() => enableNotifications(email)}
+                      className="text-xs tracking-[0.1em] uppercase px-4 py-2.5 rounded-sm border flex items-center gap-1.5"
+                      style={{ borderColor: C.border, color: C.mutedDark }}
+                    >
+                      <Bell size={13} /> Notify Me In-App Instead
+                    </button>
                   </div>
                   <div className="flex items-center justify-center gap-4 pt-1">
                     {account && (
