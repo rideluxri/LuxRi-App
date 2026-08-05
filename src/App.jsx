@@ -617,36 +617,34 @@ export default function LuxRiBooking() {
   const [pendingAssignedDriver, setPendingAssignedDriver] = useState("");
   const [pendingAssignedDriverName, setPendingAssignedDriverName] = useState("");
 
-  const fare = vehicle ? estimateFare(tripType, vehicle, miles) : 0;
-  const nonCancelledRides = history.filter((h) => h.status !== "cancelled").length;
-  const isLoyaltyRide = !!account && !account.business && !rescheduling && (nonCancelledRides + 1) % LOYALTY_EVERY === 0;
-  const loyaltyDiscount = isLoyaltyRide ? Math.round(fare * 0.5 * 100) / 100 : 0;
-  const businessPct = account?.business ? promos[normBusiness(account.business)] || 0 : 0;
-  const businessDiscount = businessPct > 0 ? Math.round(fare * (businessPct / 100) * 100) / 100 : 0;
-  const hasReferralReward = !!account && !rescheduling && (account.referralRewardsAvailable || 0) > 0;
-  const referralDiscount = hasReferralReward ? Math.round(fare * (REFERRAL_PCT / 100) * 100) / 100 : 0;
-  const isFirstRide = !!account && !rescheduling && nonCancelledRides === 0;
-  const firstRideDiscount = isFirstRide ? Math.round(fare * (FIRST_RIDE_PCT / 100) * 100) / 100 : 0;
-
-  // Business rate always wins outright — no stacking with anything else.
-  // Otherwise the single best of referral / first-ride / loyalty applies.
-  let discountType = null;
-  let discountAmount = 0;
-  if (businessDiscount > 0) {
-    discountType = "business";
-    discountAmount = businessDiscount;
-  } else {
+  const computeDiscountForFare = (fareAmount) => {
+    const ld =
+      !!account && !account.business && !rescheduling && (nonCancelledRides + 1) % LOYALTY_EVERY === 0
+        ? Math.round(fareAmount * 0.5 * 100) / 100
+        : 0;
+    const bp = account?.business ? promos[normBusiness(account.business)] || 0 : 0;
+    const bd = bp > 0 ? Math.round(fareAmount * (bp / 100) * 100) / 100 : 0;
+    const hrr = !!account && !rescheduling && (account.referralRewardsAvailable || 0) > 0;
+    const rd = hrr ? Math.round(fareAmount * (REFERRAL_PCT / 100) * 100) / 100 : 0;
+    const ifr = !!account && !rescheduling && nonCancelledRides === 0;
+    const fd = ifr ? Math.round(fareAmount * (FIRST_RIDE_PCT / 100) * 100) / 100 : 0;
+    if (bd > 0) return { type: "business", amt: bd };
     const candidates = [
-      { type: "referral", amt: referralDiscount },
-      { type: "firstRide", amt: firstRideDiscount },
-      { type: "loyalty", amt: loyaltyDiscount },
+      { type: "referral", amt: rd },
+      { type: "firstRide", amt: fd },
+      { type: "loyalty", amt: ld },
     ].filter((c) => c.amt > 0);
     if (candidates.length) {
       candidates.sort((a, b) => b.amt - a.amt);
-      discountType = candidates[0].type;
-      discountAmount = candidates[0].amt;
+      return { type: candidates[0].type, amt: candidates[0].amt };
     }
-  }
+    return { type: null, amt: 0 };
+  };
+
+  const fare = vehicle ? estimateFare(tripType, vehicle, miles) : 0;
+  const nonCancelledRides = history.filter((h) => h.status !== "cancelled").length;
+  const { type: discountType, amt: discountAmount } = computeDiscountForFare(fare);
+  const businessPct = account?.business ? promos[normBusiness(account.business)] || 0 : 0;
   const effectiveFare = Math.round((fare - discountAmount) * 100) / 100;
   const tipAmount = tipMode === "custom" ? Number(customTip) || 0 : Math.round(fare * (tipPct / 100) * 100) / 100;
   const total = Math.round((effectiveFare + tipAmount) * 100) / 100;
@@ -3464,7 +3462,9 @@ export default function LuxRiBooking() {
                     </div>
                   )}
                   {Object.entries(VEHICLES).map(([key, v]) => {
-                    const price = estimateFare(tripType, key, miles);
+                    const rawPrice = estimateFare(tripType, key, miles);
+                    const { amt: optionDiscount } = computeDiscountForFare(rawPrice);
+                    const price = Math.round((rawPrice - optionDiscount) * 100) / 100;
                     const paxCount = Number(passengers) || 0;
                     const fits = paxCount === 0 || paxCount <= v.seats;
                     return (
@@ -3489,7 +3489,16 @@ export default function LuxRiBooking() {
                         </div>
                         <div className="text-right">
                           {fits ? (
-                            <div className="text-lg">${price.toFixed(0)}</div>
+                            optionDiscount > 0 ? (
+                              <div>
+                                <div className="text-[11px] line-through" style={{ color: C.faint }}>
+                                  ${rawPrice.toFixed(0)}
+                                </div>
+                                <div className="text-lg" style={{ color: C.gold }}>${price.toFixed(0)}</div>
+                              </div>
+                            ) : (
+                              <div className="text-lg">${price.toFixed(0)}</div>
+                            )
                           ) : (
                             <div className="text-[11px]" style={{ color: C.error }}>Too small for your group</div>
                           )}
