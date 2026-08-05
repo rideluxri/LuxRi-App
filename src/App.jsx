@@ -297,6 +297,11 @@ function detectPlatform() {
   return "ios";
 }
 
+function routeText(b) {
+  const parts = [b.pickup, ...(b.stops || []).map((s) => s.address), b.dropoff];
+  return parts.filter(Boolean).join(" → ");
+}
+
 function isToday(dateStr) {
   return dateStr === new Date().toISOString().slice(0, 10);
 }
@@ -338,6 +343,22 @@ function estimateDrivingMiles(a, b) {
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
   const straightLine = 2 * R * Math.asin(Math.sqrt(h));
   return Math.round(straightLine * ROAD_DISTANCE_FACTOR * 10) / 10;
+}
+
+// Sums each leg of the route — pickup -> stop 1 -> stop 2 -> ... -> drop-off.
+// If any leg is missing coordinates (a stop typed by hand, not selected from
+// autocomplete), the whole estimate falls back to null, same as the
+// two-point case, so the miles field just stays manual for that ride.
+function estimateMultiStopMiles(pickup, stops, dropoff) {
+  const points = [pickup, ...(stops || []).map((s) => s.coords).filter(Boolean), dropoff];
+  if (points.length < 2 || !points[0] || !points[points.length - 1]) return null;
+  let total = 0;
+  for (let i = 0; i < points.length - 1; i++) {
+    const leg = estimateDrivingMiles(points[i], points[i + 1]);
+    if (leg == null) return null;
+    total += leg;
+  }
+  return Math.round(total * 10) / 10;
 }
 
 function urlBase64ToUint8Array(base64String) {
@@ -595,6 +616,7 @@ export default function LuxRiBooking() {
   const [tripType, setTripType] = useState("oneway");
   const [pickup, setPickup] = useState("");
   const [dropoff, setDropoff] = useState("");
+  const [stops, setStops] = useState([]);
   const [flight, setFlight] = useState("");
   const [miles, setMiles] = useState("");
   const [pickupCoords, setPickupCoords] = useState(null);
@@ -845,12 +867,12 @@ export default function LuxRiBooking() {
   };
 
   useEffect(() => {
-    const estimate = estimateDrivingMiles(pickupCoords, dropoffCoords);
+    const estimate = estimateMultiStopMiles(pickupCoords, stops, dropoffCoords);
     if (estimate != null) {
       setMiles(String(estimate));
       setMilesAuto(true);
     }
-  }, [pickupCoords, dropoffCoords, tripType]);
+  }, [pickupCoords, dropoffCoords, stops, tripType]);
 
   const enableNotifications = async (targetEmail) => {
     if (typeof Notification === "undefined") return;
@@ -925,6 +947,23 @@ export default function LuxRiBooking() {
       setDropoff(saved.address);
       setDropoffCoords(saved.lat != null && saved.lng != null ? { lat: saved.lat, lng: saved.lng } : null);
     }
+  };
+
+  const addStop = () => {
+    if (stops.length >= 3) return; // keep it reasonable — 3 extra stops plus pickup/drop-off
+    setStops((prev) => [...prev, { address: "", coords: null }]);
+  };
+
+  const removeStop = (index) => {
+    setStops((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const updateStopAddress = (index, address) => {
+    setStops((prev) => prev.map((s, i) => (i === index ? { address, coords: null } : s)));
+  };
+
+  const updateStopCoords = (index, coords) => {
+    setStops((prev) => prev.map((s, i) => (i === index ? { ...s, coords } : s)));
   };
 
   const enterBookingAs = async (acct) => {
@@ -1626,6 +1665,7 @@ export default function LuxRiBooking() {
       tripType,
       pickup,
       dropoff,
+      stops: stops.filter((s) => s.address.trim()).map((s) => ({ address: s.address.trim() })),
       flight,
       miles,
       date,
@@ -1682,6 +1722,7 @@ export default function LuxRiBooking() {
     setTripType("oneway");
     setPickup("");
     setDropoff("");
+    setStops([]);
     setFlight("");
     setMiles("");
     setPickupCoords(null);
@@ -1712,6 +1753,7 @@ export default function LuxRiBooking() {
     setTripType(b.tripType);
     setPickup(b.pickup);
     setDropoff(b.dropoff);
+    setStops((b.stops || []).map((s) => ({ address: s.address, coords: null })));
     setFlight(b.flight || "");
     setMiles(b.miles || "");
     setPickupCoords(null);
@@ -1747,6 +1789,7 @@ export default function LuxRiBooking() {
     setTripType(b.tripType);
     setPickup(b.pickup);
     setDropoff(b.dropoff);
+    setStops((b.stops || []).map((s) => ({ address: s.address, coords: null })));
     setFlight(b.flight || "");
     setMiles(b.miles || "");
     setPickupCoords(null);
@@ -1839,6 +1882,7 @@ export default function LuxRiBooking() {
   };
 
   const dashStats = computeDashStats(dashBookings);
+  const liveRoute = [pickup, ...stops.map((s) => s.address).filter((a) => a.trim()), dropoff].filter(Boolean).join(" → ");
 
   const OPERATOR_TABS = [
     { key: "dashboard", label: "Dashboard" },
@@ -2309,7 +2353,7 @@ export default function LuxRiBooking() {
                           ? `Fare $${Number(b.fare).toFixed(0)} + tip $${Number(b.tipAmount).toFixed(0)} = $${Number(b.total ?? b.fare).toFixed(0)}`
                           : "No tip included"}
                       </div>
-                      <div className="text-xs" style={{ color: C.mutedDark }}>{b.pickup} → {b.dropoff}</div>
+                      <div className="text-xs" style={{ color: C.mutedDark }}>{routeText(b)}</div>
                       <div className="text-xs">
                         <a href={`tel:${b.phone}`} style={{ color: C.mutedDark }}>
                           {b.phone} <span style={{ color: C.gold }}>(call)</span>
@@ -2581,7 +2625,7 @@ export default function LuxRiBooking() {
                     <div className="text-xs" style={{ color: Number(b.tipAmount) > 0 ? C.gold : C.mutedDark }}>
                       {Number(b.tipAmount) > 0 ? `Tip earned: $${Number(b.tipAmount).toFixed(0)}` : "No tip on this ride"}
                     </div>
-                    <div className="text-xs" style={{ color: C.mutedDark }}>{b.pickup} → {b.dropoff}</div>
+                    <div className="text-xs" style={{ color: C.mutedDark }}>{routeText(b)}</div>
                     <div className="text-xs">
                       <a href={`tel:${b.phone}`} style={{ color: C.mutedDark }}>
                         {b.phone} <span style={{ color: C.gold }}>(call)</span>
@@ -2616,13 +2660,19 @@ export default function LuxRiBooking() {
                       Directions: Pickup
                     </a>
                     <a
-                      href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(b.dropoff)}`}
+                      href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(b.pickup)}&destination=${encodeURIComponent(
+                        b.dropoff
+                      )}${
+                        (b.stops || []).length
+                          ? `&waypoints=${(b.stops || []).map((s) => encodeURIComponent(s.address)).join("|")}`
+                          : ""
+                      }`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex-1 text-center py-2 rounded-xl text-xs border"
                       style={{ borderColor: C.border, color: C.mutedDark }}
                     >
-                      Directions: Drop-off
+                      {(b.stops || []).length ? "Directions: Full Route" : "Directions: Drop-off"}
                     </a>
                   </div>
                 )}
@@ -3244,7 +3294,7 @@ export default function LuxRiBooking() {
                   </span>
                 </div>
                 <div className="text-xs" style={{ color: C.mutedDark }}>
-                  {r.date} · {r.time} · {r.pickup} → {r.dropoff}
+                  {r.date} · {r.time} · {routeText(r)}
                   {r.tripType === "round" && r.returnDate ? ` · return ${r.returnDate} ${r.returnTime}` : ""}
                 </div>
                 <div className="text-xs" style={{ color: C.mutedDark }}>Total ${Number(r.total ?? r.fare).toFixed(0)}</div>
@@ -3359,7 +3409,7 @@ export default function LuxRiBooking() {
                   </span>
                 </div>
                 <div className="text-xs" style={{ color: C.mutedDark }}>
-                  {lookupBooking.date} · {lookupBooking.time} · {lookupBooking.pickup} → {lookupBooking.dropoff}
+                  {lookupBooking.date} · {lookupBooking.time} · {routeText(lookupBooking)}
                   {lookupBooking.tripType === "round" && lookupBooking.returnDate
                     ? ` · return ${lookupBooking.returnDate} ${lookupBooking.returnTime}`
                     : ""}
@@ -3610,6 +3660,38 @@ export default function LuxRiBooking() {
                         </button>
                       )}
                     </div>
+                    {stops.map((stop, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <div className="flex-1">
+                          <AddressField
+                            icon={<MapPin size={16} />}
+                            placeholder={`Stop ${i + 1}`}
+                            value={stop.address}
+                            onChange={(v) => updateStopAddress(i, v)}
+                            onPlaceSelected={(coords) => updateStopCoords(i, coords)}
+                            theme={C}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeStop(i)}
+                          className="mt-2.5 text-lg leading-none"
+                          style={{ color: C.error }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                    {stops.length < 3 && (
+                      <button
+                        type="button"
+                        onClick={addStop}
+                        className="text-[11px]"
+                        style={{ color: C.gold }}
+                      >
+                        + Add a stop
+                      </button>
+                    )}
                     <div>
                       <AddressField
                         icon={<MapPin size={16} />}
@@ -3863,7 +3945,7 @@ export default function LuxRiBooking() {
                         OWNER_PHONE,
                         `New LuxRi booking request from ${name}: ${tripType} on ${date} at ${time}${
                           tripType === "round" && returnDate ? `, return ${returnDate} at ${returnTime}` : ""
-                        }, ${VEHICLES[vehicle]?.name}, ${pickup} to ${dropoff}. Ref ${confirmCode}.`
+                        }, ${VEHICLES[vehicle]?.name}, ${liveRoute}. Ref ${confirmCode}.`
                       )}
                       className="text-xs tracking-[0.1em] uppercase px-4 py-2.5 rounded-xl flex items-center gap-1.5"
                       style={{ color: C.bg, background: goldGradient }}
@@ -3872,7 +3954,7 @@ export default function LuxRiBooking() {
                     </a>
                     <a
                       href={`mailto:${email}?subject=${encodeURIComponent(`LuxRi Ride Receipt — ${confirmCode}`)}&body=${encodeURIComponent(
-                        `Thanks for booking with LuxRi Driving Services.\n\nConfirmation: ${confirmCode}\nVehicle: ${VEHICLES[vehicle]?.name}\nPickup: ${pickup}\nDrop-off: ${dropoff}\nDate/Time: ${date} at ${time}${
+                        `Thanks for booking with LuxRi Driving Services.\n\nConfirmation: ${confirmCode}\nVehicle: ${VEHICLES[vehicle]?.name}\nRoute: ${liveRoute}\nDate/Time: ${date} at ${time}${
                           tripType === "round" && returnDate ? `\nReturn: ${returnDate} at ${returnTime}` : ""
                         }\nFare: $${fare.toFixed(0)}${discountType ? `\nDiscount: −$${discountAmount.toFixed(0)}` : ""}\nTip: $${tipAmount.toFixed(
                           0
