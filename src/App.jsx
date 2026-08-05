@@ -448,7 +448,7 @@ function RouteProgress({ step, onStepClick }) {
 function Field({ icon, placeholder, value, onChange, type = "text" }) {
   return (
     <div
-      className="flex items-center gap-2 border rounded-sm px-3 py-2.5"
+      className="flex items-center gap-2 border rounded-xl px-3 py-2.5"
       style={{ borderColor: C.border }}
     >
       {icon && <span style={{ color: C.mutedDark }}>{icon}</span>}
@@ -484,14 +484,14 @@ function FeedbackForm({ booking, theme: T, onSubmitted }) {
   };
 
   return (
-    <div className="border rounded-sm p-3 space-y-2 mt-1" style={{ borderColor: T.gold }}>
+    <div className="border rounded-xl p-3 space-y-2 mt-1" style={{ borderColor: T.gold }}>
       <div className="text-xs" style={{ color: T.mutedDark }}>How was your ride?</div>
       <div className="flex gap-1.5">
         {[1, 2, 3, 4, 5].map((n) => (
           <button
             key={n}
             onClick={() => setRating(n)}
-            className="h-8 w-8 rounded-sm border text-xs"
+            className="h-8 w-8 rounded-xl border text-xs"
             style={
               rating >= n
                 ? { borderColor: T.gold, color: T.gold, background: T.goldWash }
@@ -507,13 +507,13 @@ function FeedbackForm({ booking, theme: T, onSubmitted }) {
         value={comment}
         onChange={(e) => setComment(e.target.value)}
         rows={2}
-        className="w-full rounded-sm px-3 py-2 text-sm focus:outline-none resize-none border"
+        className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none resize-none border"
         style={{ background: T.inputBg, borderColor: T.border, color: T.ivory }}
       />
       <button
         onClick={submit}
         disabled={!rating || busy}
-        className="w-full py-2 rounded-sm text-xs tracking-wide disabled:opacity-40"
+        className="w-full py-2 rounded-xl text-xs tracking-wide disabled:opacity-40"
         style={{ background: `linear-gradient(to bottom, ${T.goldLight}, ${T.goldDark})`, color: T.bg }}
       >
         {busy ? "Submitting…" : "Submit Feedback"}
@@ -1789,18 +1789,18 @@ export default function LuxRiBooking() {
   return (
     <div
       className="min-h-screen w-full flex justify-center py-10 px-4"
-      style={{ background: C.bg, color: C.ivory, fontFamily: "Georgia, 'Times New Roman', serif" }}
+      style={{ background: C.bg, color: C.ivory, fontFamily: "'Fraunces', Georgia, serif" }}
     >
       <div className="w-full max-w-xl">
         {/* Header */}
         <div className="mb-10 text-center relative">
-          <div className="absolute right-0 top-0" style={{ fontFamily: "system-ui, sans-serif" }}>
+          <div className="absolute right-0 top-0" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
             <button onClick={() => setMenuOpen((v) => !v)} style={{ color: C.mutedDark }} title="Menu">
               <Menu size={18} />
             </button>
             {menuOpen && (
               <div
-                className="absolute right-0 mt-2 w-48 rounded-sm border py-1.5 text-left z-10"
+                className="absolute right-0 mt-2 w-48 rounded-xl border py-1.5 text-left z-10"
                 style={{ borderColor: C.panelBorder, background: C.panel }}
               >
                 {!account && (
@@ -1914,7 +1914,7 @@ export default function LuxRiBooking() {
             <div className="text-4xl tracking-wide" style={{ letterSpacing: "0.04em" }}>
               Lux<span style={{ color: C.gold }}>Ri</span>
             </div>
-            <div className="mt-2 text-sm" style={{ color: C.mutedDark, fontFamily: "system-ui, sans-serif" }}>
+            <div className="mt-2 text-sm" style={{ color: C.mutedDark, fontFamily: "'Inter', system-ui, sans-serif" }}>
               LuxRi Driving Services
             </div>
           </button>
@@ -1926,8 +1926,8 @@ export default function LuxRiBooking() {
 
         {mode === "welcome" && (
           <div
-            className="rounded-sm border p-6 sm:p-8 space-y-3"
-            style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "system-ui, sans-serif" }}
+            className="rounded-xl border p-6 sm:p-8 space-y-3 shadow-2xl shadow-black/50"
+            style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "'Inter', system-ui, sans-serif" }}
           >
             {ratingSummary.count > 0 && (
               <div className="text-center text-xs tracking-[0.1em] uppercase" style={{ color: C.gold }}>
@@ -1939,14 +1939,14 @@ export default function LuxRiBooking() {
             </div>
             <button
               onClick={() => { setAuthError(""); navigate("signin"); }}
-              className="w-full py-3 rounded-sm border text-sm tracking-wide"
+              className="w-full py-3 rounded-xl border text-sm tracking-wide"
               style={{ borderColor: C.gold, color: C.ivory }}
             >
               Sign In
             </button>
             <button
               onClick={() => { setAuthError(""); navigate("signup"); }}
-              className="w-full py-3 rounded-sm border text-sm tracking-wide"
+              className="w-full py-3 rounded-xl border text-sm tracking-wide"
               style={{ borderColor: C.border, color: C.ivory }}
             >
               Create Account
@@ -1970,8 +1970,8 @@ export default function LuxRiBooking() {
 
         {(mode === "signin" || mode === "signup") && (
           <div
-            className="rounded-sm border p-6 sm:p-8 space-y-3"
-            style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "system-ui, sans-serif" }}
+            className="rounded-xl border p-6 sm:p-8 space-y-3 shadow-2xl shadow-black/50"
+            style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "'Inter', system-ui, sans-serif" }}
           >
             <div className="text-xs tracking-[0.15em] uppercase mb-1 flex items-center gap-2" style={{ color: C.mutedDark }}>
               <User size={14} /> {mode === "signin" ? "Sign in" : "Create your account"}
@@ -2013,7 +2013,7 @@ export default function LuxRiBooking() {
             <button
               onClick={mode === "signin" ? handleSignIn : handleSignUp}
               disabled={authBusy}
-              className="w-full py-3 rounded-sm text-sm tracking-wide disabled:opacity-40"
+              className="w-full py-3 rounded-xl text-sm tracking-wide disabled:opacity-40 transition-all duration-150 hover:brightness-110 active:scale-[0.97]"
               style={{ background: goldGradient, color: C.bg }}
             >
               {authBusy ? "Please wait…" : mode === "signin" ? "Sign In" : "Create Account"}
@@ -2033,8 +2033,8 @@ export default function LuxRiBooking() {
 
         {mode === "dashboard" && (
           <div
-            className="rounded-sm border p-6 sm:p-8 space-y-5"
-            style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "system-ui, sans-serif" }}
+            className="rounded-xl border p-6 sm:p-8 space-y-5 shadow-2xl shadow-black/50"
+            style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "'Inter', system-ui, sans-serif" }}
           >
             <div className="flex items-center justify-between mb-1">
               <div className="text-xs tracking-[0.15em] uppercase flex items-center gap-2" style={{ color: C.mutedDark }}>
@@ -2052,14 +2052,14 @@ export default function LuxRiBooking() {
             {notifPermission !== "granted" && notifPermission !== "unsupported" && (
               <button
                 onClick={enableNotifications}
-                className="w-full py-2.5 rounded-sm border text-xs tracking-wide flex items-center justify-center gap-1.5"
+                className="w-full py-2.5 rounded-xl border text-xs tracking-wide flex items-center justify-center gap-1.5"
                 style={{ borderColor: C.gold, color: C.gold }}
               >
                 <Bell size={13} /> Enable Booking Notifications
               </button>
             )}
 
-            <div className="border rounded-sm p-3 space-y-3" style={{ borderColor: C.border }}>
+            <div className="border rounded-xl p-3 space-y-3" style={{ borderColor: C.border }}>
               <div className="text-[11px] tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
                 Overview
               </div>
@@ -2093,14 +2093,14 @@ export default function LuxRiBooking() {
               </div>
               <button
                 onClick={exportBookingsCSV}
-                className="w-full py-2 rounded-sm text-xs border"
+                className="w-full py-2 rounded-xl text-xs border"
                 style={{ borderColor: C.gold, color: C.gold }}
               >
                 Export Bookings to CSV
               </button>
             </div>
 
-            <div className="border rounded-sm p-3 space-y-2" style={{ borderColor: C.border }}>
+            <div className="border rounded-xl p-3 space-y-2" style={{ borderColor: C.border }}>
               <div className="text-[11px] tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
                 Availability {hoursSaving && <span style={{ color: C.gold }}>· saving…</span>}
               </div>
@@ -2109,7 +2109,7 @@ export default function LuxRiBooking() {
                   <button
                     key={d}
                     onClick={() => toggleDay(i)}
-                    className="px-2.5 py-1.5 rounded-sm text-[11px] border"
+                    className="px-2.5 py-1.5 rounded-xl text-[11px] border"
                     style={
                       hours.days.includes(i)
                         ? { borderColor: C.gold, color: C.gold, background: C.goldWash }
@@ -2140,7 +2140,7 @@ export default function LuxRiBooking() {
                 <Field placeholder="" value={blockedDateInput} onChange={setBlockedDateInput} type="date" />
                 <button
                   onClick={addBlockedDate}
-                  className="px-3 py-2.5 rounded-sm text-xs border shrink-0"
+                  className="px-3 py-2.5 rounded-xl text-xs border shrink-0"
                   style={{ borderColor: C.border, color: C.mutedDark }}
                 >
                   Block Date
@@ -2151,7 +2151,7 @@ export default function LuxRiBooking() {
                   {hours.blockedDates.map((d) => (
                     <span
                       key={d}
-                      className="text-[11px] px-2 py-1 rounded-sm border flex items-center gap-1.5"
+                      className="text-[11px] px-2 py-1 rounded-xl border flex items-center gap-1.5"
                       style={{ borderColor: C.border, color: C.mutedDark }}
                     >
                       {d}
@@ -2178,7 +2178,7 @@ export default function LuxRiBooking() {
                 </div>
                 <button
                   onClick={addBlockedPeriod}
-                  className="w-full py-2 rounded-sm text-xs border"
+                  className="w-full py-2 rounded-xl text-xs border"
                   style={{ borderColor: C.border, color: C.mutedDark }}
                 >
                   Block This Range
@@ -2188,7 +2188,7 @@ export default function LuxRiBooking() {
                     {hours.blockedPeriods.map((p, i) => (
                       <div
                         key={i}
-                        className="flex items-center justify-between text-[11px] px-2 py-1.5 rounded-sm border"
+                        className="flex items-center justify-between text-[11px] px-2 py-1.5 rounded-xl border"
                         style={{ borderColor: C.border, color: C.mutedDark }}
                       >
                         <span>
@@ -2204,7 +2204,7 @@ export default function LuxRiBooking() {
               </div>
             </div>
 
-            <div className="border rounded-sm p-3 space-y-2" style={{ borderColor: C.border }}>
+            <div className="border rounded-xl p-3 space-y-2" style={{ borderColor: C.border }}>
               <div className="text-[11px] tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
                 Business Promotions {promoSaving && <span style={{ color: C.gold }}>· saving…</span>}
               </div>
@@ -2218,7 +2218,7 @@ export default function LuxRiBooking() {
                 </div>
                 <button
                   onClick={savePromo}
-                  className="px-3 py-2.5 rounded-sm text-xs border shrink-0"
+                  className="px-3 py-2.5 rounded-xl text-xs border shrink-0"
                   style={{ borderColor: C.gold, color: C.gold }}
                 >
                   Add
@@ -2229,7 +2229,7 @@ export default function LuxRiBooking() {
                   {Object.entries(promos).map(([biz, pct]) => (
                     <span
                       key={biz}
-                      className="text-[11px] px-2 py-1 rounded-sm border flex items-center gap-1.5"
+                      className="text-[11px] px-2 py-1 rounded-xl border flex items-center gap-1.5"
                       style={{ borderColor: C.border, color: C.mutedDark }}
                     >
                       {biz} — {pct}%
@@ -2242,7 +2242,7 @@ export default function LuxRiBooking() {
               )}
             </div>
 
-            <div className="border rounded-sm p-3 space-y-2" style={{ borderColor: C.border }}>
+            <div className="border rounded-xl p-3 space-y-2" style={{ borderColor: C.border }}>
               <div className="text-[11px] tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
                 Drivers {inviteGenBusy && <span style={{ color: C.gold }}>· generating…</span>}
               </div>
@@ -2266,7 +2266,7 @@ export default function LuxRiBooking() {
               {drivers.length === 0 && <div className="text-xs" style={{ color: C.mutedDark }}>No drivers added yet.</div>}
               <button
                 onClick={generateDriverInvite}
-                className="w-full py-2.5 rounded-sm text-xs border"
+                className="w-full py-2.5 rounded-xl text-xs border"
                 style={{ borderColor: C.gold, color: C.gold }}
               >
                 Generate Driver Invite Code
@@ -2278,7 +2278,7 @@ export default function LuxRiBooking() {
                     .map((i) => (
                       <span
                         key={i.code}
-                        className="text-[11px] px-2 py-1 rounded-sm border"
+                        className="text-[11px] px-2 py-1 rounded-xl border"
                         style={{ borderColor: C.border, color: C.gold }}
                       >
                         {i.code} (unused)
@@ -2291,7 +2291,7 @@ export default function LuxRiBooking() {
               </div>
             </div>
 
-            <div className="border rounded-sm p-3 space-y-3" style={{ borderColor: C.border }}>
+            <div className="border rounded-xl p-3 space-y-3" style={{ borderColor: C.border }}>
               <div className="flex items-center justify-between">
                 <div className="text-[11px] tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
                   Accounts
@@ -2299,7 +2299,7 @@ export default function LuxRiBooking() {
                 <div className="flex gap-1.5">
                   <button
                     onClick={() => setAccountsFilter("customers")}
-                    className="text-[11px] px-2 py-1 rounded-sm border"
+                    className="text-[11px] px-2 py-1 rounded-xl border"
                     style={
                       accountsFilter === "customers"
                         ? { borderColor: C.gold, color: C.gold }
@@ -2310,7 +2310,7 @@ export default function LuxRiBooking() {
                   </button>
                   <button
                     onClick={() => setAccountsFilter("drivers")}
-                    className="text-[11px] px-2 py-1 rounded-sm border"
+                    className="text-[11px] px-2 py-1 rounded-xl border"
                     style={
                       accountsFilter === "drivers"
                         ? { borderColor: C.gold, color: C.gold }
@@ -2334,7 +2334,7 @@ export default function LuxRiBooking() {
                 ).length;
                 const isEditing = editingAccountEmail === acct.email;
                 return (
-                  <div key={acct.email} className="border rounded-sm p-3 space-y-2 text-xs" style={{ borderColor: C.border }}>
+                  <div key={acct.email} className="border rounded-xl p-3 space-y-2 text-xs" style={{ borderColor: C.border }}>
                     {!isEditing ? (
                       <>
                         <div className="flex items-start justify-between">
@@ -2359,7 +2359,7 @@ export default function LuxRiBooking() {
                             )}
                           </div>
                           <span
-                            className="text-[10px] uppercase tracking-wide px-2 py-1 rounded-sm border shrink-0"
+                            className="text-[10px] uppercase tracking-wide px-2 py-1 rounded-xl border shrink-0"
                             style={{ borderColor: C.border, color: C.mutedDark }}
                           >
                             {acct.role || "customer"}
@@ -2368,28 +2368,28 @@ export default function LuxRiBooking() {
                         <div className="flex gap-2">
                           <button
                             onClick={() => setExpandedAccountEmail(expandedAccountEmail === acct.email ? null : acct.email)}
-                            className="flex-1 py-1.5 rounded-sm border"
+                            className="flex-1 py-1.5 rounded-xl border"
                             style={{ borderColor: C.gold, color: C.gold }}
                           >
                             {expandedAccountEmail === acct.email ? "Hide Rides" : "View Rides"}
                           </button>
                           <button
                             onClick={() => startEditAccount(acct)}
-                            className="flex-1 py-1.5 rounded-sm border"
+                            className="flex-1 py-1.5 rounded-xl border"
                             style={{ borderColor: C.border, color: C.mutedDark }}
                           >
                             Edit
                           </button>
                           <button
                             onClick={() => resetAccountPassword(acct)}
-                            className="flex-1 py-1.5 rounded-sm border"
+                            className="flex-1 py-1.5 rounded-xl border"
                             style={{ borderColor: C.border, color: C.mutedDark }}
                           >
                             Reset Password
                           </button>
                           <button
                             onClick={() => deleteAccount(acct)}
-                            className="flex-1 py-1.5 rounded-sm border"
+                            className="flex-1 py-1.5 rounded-xl border"
                             style={{ borderColor: C.error, color: C.error }}
                           >
                             Delete
@@ -2405,7 +2405,7 @@ export default function LuxRiBooking() {
                               )
                               .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
                               .map((b) => (
-                                <div key={b.code} className="rounded-sm border p-2" style={{ borderColor: C.border }}>
+                                <div key={b.code} className="rounded-xl border p-2" style={{ borderColor: C.border }}>
                                   <div className="flex justify-between">
                                     <span style={{ color: C.ivory }}>
                                       {b.date} · {VEHICLES[b.vehicle]?.name}
@@ -2445,27 +2445,27 @@ export default function LuxRiBooking() {
                           value={editAccountDraft.name}
                           onChange={(e) => setEditAccountDraft({ ...editAccountDraft, name: e.target.value })}
                           placeholder="Name"
-                          className="w-full rounded-sm px-2 py-1.5 border"
+                          className="w-full rounded-xl px-2 py-1.5 border"
                           style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
                         />
                         <input
                           value={editAccountDraft.phone}
                           onChange={(e) => setEditAccountDraft({ ...editAccountDraft, phone: e.target.value })}
                           placeholder="Phone"
-                          className="w-full rounded-sm px-2 py-1.5 border"
+                          className="w-full rounded-xl px-2 py-1.5 border"
                           style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
                         />
                         <input
                           value={editAccountDraft.business}
                           onChange={(e) => setEditAccountDraft({ ...editAccountDraft, business: e.target.value })}
                           placeholder="Business (optional)"
-                          className="w-full rounded-sm px-2 py-1.5 border"
+                          className="w-full rounded-xl px-2 py-1.5 border"
                           style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
                         />
                         <select
                           value={editAccountDraft.role}
                           onChange={(e) => setEditAccountDraft({ ...editAccountDraft, role: e.target.value })}
-                          className="w-full rounded-sm px-2 py-1.5 border"
+                          className="w-full rounded-xl px-2 py-1.5 border"
                           style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
                         >
                           <option value="customer">Customer</option>
@@ -2475,14 +2475,14 @@ export default function LuxRiBooking() {
                           <button
                             onClick={() => saveAccountEdit(acct)}
                             disabled={accountEditSaving}
-                            className="flex-1 py-1.5 rounded-sm disabled:opacity-40"
+                            className="flex-1 py-1.5 rounded-xl disabled:opacity-40 transition-all duration-150 hover:brightness-110 active:scale-[0.97]"
                             style={{ background: goldGradient, color: C.bg }}
                           >
                             {accountEditSaving ? "Saving…" : "Save"}
                           </button>
                           <button
                             onClick={cancelEditAccount}
-                            className="flex-1 py-1.5 rounded-sm border"
+                            className="flex-1 py-1.5 rounded-xl border"
                             style={{ borderColor: C.border, color: C.mutedDark }}
                           >
                             Cancel
@@ -2502,7 +2502,7 @@ export default function LuxRiBooking() {
               dashBookings.map((b) => (
                 <div
                   key={b.code}
-                  className="border rounded-sm p-3 text-sm space-y-2"
+                  className="border rounded-xl p-3 text-sm space-y-2"
                   style={{ borderColor: C.border, opacity: b.status === "cancelled" ? 0.5 : 1 }}
                 >
                   <div className="flex justify-between items-start">
@@ -2514,7 +2514,7 @@ export default function LuxRiBooking() {
                       <div className="text-xs mt-0.5" style={{ color: C.mutedDark }}>
                         {isToday(b.date) && b.status !== "cancelled" && b.status !== "completed" && (
                           <span
-                            className="text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded-sm mr-1.5"
+                            className="text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded-xl mr-1.5"
                             style={{ background: C.goldWash, color: C.gold }}
                           >
                             Today
@@ -2544,7 +2544,7 @@ export default function LuxRiBooking() {
                       )}
                     </div>
                     <span
-                      className="text-[10px] uppercase tracking-wide px-2 py-1 rounded-sm shrink-0 border"
+                      className="text-[10px] uppercase tracking-wide px-2 py-1 rounded-xl shrink-0 border"
                       style={
                         b.status === "confirmed" || b.status === "completed"
                           ? { background: "#2A2311", color: C.gold, borderColor: C.gold }
@@ -2560,7 +2560,7 @@ export default function LuxRiBooking() {
                       <select
                         value={b.assignedDriverEmail || ""}
                         onChange={(e) => assignDriver(b, e.target.value)}
-                        className="flex-1 rounded-sm px-2 py-1.5 text-xs border"
+                        className="flex-1 rounded-xl px-2 py-1.5 text-xs border"
                         style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
                       >
                         <option value="">Unassigned (me)</option>
@@ -2579,14 +2579,14 @@ export default function LuxRiBooking() {
                           value={editDraft.pickup}
                           onChange={(e) => setEditDraft({ ...editDraft, pickup: e.target.value })}
                           placeholder="Pickup"
-                          className="rounded-sm px-2 py-1.5 text-xs border"
+                          className="rounded-xl px-2 py-1.5 text-xs border"
                           style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
                         />
                         <input
                           value={editDraft.dropoff}
                           onChange={(e) => setEditDraft({ ...editDraft, dropoff: e.target.value })}
                           placeholder="Drop-off"
-                          className="rounded-sm px-2 py-1.5 text-xs border"
+                          className="rounded-xl px-2 py-1.5 text-xs border"
                           style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
                         />
                       </div>
@@ -2595,14 +2595,14 @@ export default function LuxRiBooking() {
                           type="date"
                           value={editDraft.date}
                           onChange={(e) => setEditDraft({ ...editDraft, date: e.target.value })}
-                          className="rounded-sm px-2 py-1.5 text-xs border"
+                          className="rounded-xl px-2 py-1.5 text-xs border"
                           style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
                         />
                         <input
                           type="time"
                           value={editDraft.time}
                           onChange={(e) => setEditDraft({ ...editDraft, time: e.target.value })}
-                          className="rounded-sm px-2 py-1.5 text-xs border"
+                          className="rounded-xl px-2 py-1.5 text-xs border"
                           style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
                         />
                       </div>
@@ -2610,7 +2610,7 @@ export default function LuxRiBooking() {
                         <select
                           value={editDraft.vehicle}
                           onChange={(e) => setEditDraft({ ...editDraft, vehicle: e.target.value })}
-                          className="rounded-sm px-2 py-1.5 text-xs border"
+                          className="rounded-xl px-2 py-1.5 text-xs border"
                           style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
                         >
                           {Object.entries(VEHICLES).map(([key, v]) => (
@@ -2624,7 +2624,7 @@ export default function LuxRiBooking() {
                           onChange={(e) => setEditDraft({ ...editDraft, passengers: e.target.value })}
                           placeholder="Pax"
                           type="number"
-                          className="rounded-sm px-2 py-1.5 text-xs border"
+                          className="rounded-xl px-2 py-1.5 text-xs border"
                           style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
                         />
                         <input
@@ -2632,7 +2632,7 @@ export default function LuxRiBooking() {
                           onChange={(e) => setEditDraft({ ...editDraft, luggage: e.target.value })}
                           placeholder="Bags"
                           type="number"
-                          className="rounded-sm px-2 py-1.5 text-xs border"
+                          className="rounded-xl px-2 py-1.5 text-xs border"
                           style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
                         />
                       </div>
@@ -2640,7 +2640,7 @@ export default function LuxRiBooking() {
                         value={editDraft.phone}
                         onChange={(e) => setEditDraft({ ...editDraft, phone: e.target.value })}
                         placeholder="Phone"
-                        className="w-full rounded-sm px-2 py-1.5 text-xs border"
+                        className="w-full rounded-xl px-2 py-1.5 text-xs border"
                         style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
                       />
                       <textarea
@@ -2648,21 +2648,21 @@ export default function LuxRiBooking() {
                         onChange={(e) => setEditDraft({ ...editDraft, notes: e.target.value })}
                         placeholder="Notes"
                         rows={2}
-                        className="w-full rounded-sm px-2 py-1.5 text-xs border resize-none"
+                        className="w-full rounded-xl px-2 py-1.5 text-xs border resize-none"
                         style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
                       />
                       <div className="flex gap-2">
                         <button
                           onClick={() => saveBookingEdit(b)}
                           disabled={editSaving}
-                          className="flex-1 py-2 rounded-sm text-xs tracking-wide disabled:opacity-40"
+                          className="flex-1 py-2 rounded-xl text-xs tracking-wide disabled:opacity-40 transition-all duration-150 hover:brightness-110 active:scale-[0.97]"
                           style={{ background: goldGradient, color: C.bg }}
                         >
                           {editSaving ? "Saving…" : "Save Changes"}
                         </button>
                         <button
                           onClick={cancelEditBooking}
-                          className="flex-1 py-2 rounded-sm text-xs border"
+                          className="flex-1 py-2 rounded-xl text-xs border"
                           style={{ borderColor: C.border, color: C.mutedDark }}
                         >
                           Cancel Edit
@@ -2675,14 +2675,14 @@ export default function LuxRiBooking() {
                       <div className="flex gap-2">
                         <button
                           onClick={() => startEditBooking(b)}
-                          className="flex-1 py-2 rounded-sm text-xs border"
+                          className="flex-1 py-2 rounded-xl text-xs border"
                           style={{ borderColor: C.border, color: C.mutedDark }}
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => cancelBooking(b)}
-                          className="flex-1 py-2 rounded-sm text-xs border"
+                          className="flex-1 py-2 rounded-xl text-xs border"
                           style={{ borderColor: C.error, color: C.error }}
                         >
                           Cancel Ride
@@ -2693,7 +2693,7 @@ export default function LuxRiBooking() {
                   {b.status !== "confirmed" && b.status !== "cancelled" && b.status !== "completed" && (
                     <button
                       onClick={() => confirmBooking(b)}
-                      className="w-full py-2 rounded-sm text-xs tracking-wide flex items-center justify-center gap-1.5"
+                      className="w-full py-2 rounded-xl text-xs tracking-wide flex items-center justify-center gap-1.5 transition-all duration-150 hover:brightness-110 active:scale-[0.97]"
                       style={{ background: goldGradient, color: C.bg }}
                     >
                       <MessageSquare size={12} /> Confirm & Text Customer
@@ -2702,7 +2702,7 @@ export default function LuxRiBooking() {
                   {b.status === "confirmed" && (
                     <button
                       onClick={() => completeBooking(b)}
-                      className="w-full py-2 rounded-sm text-xs tracking-wide border"
+                      className="w-full py-2 rounded-xl text-xs tracking-wide border"
                       style={{ borderColor: C.gold, color: C.gold }}
                     >
                       Mark Ride Complete
@@ -2715,8 +2715,8 @@ export default function LuxRiBooking() {
 
         {mode === "driverRides" && (
           <div
-            className="rounded-sm border p-6 sm:p-8 space-y-3"
-            style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "system-ui, sans-serif" }}
+            className="rounded-xl border p-6 sm:p-8 space-y-3 shadow-2xl shadow-black/50"
+            style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "'Inter', system-ui, sans-serif" }}
           >
             <div className="flex items-center justify-between mb-1">
               <div className="text-xs tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
@@ -2729,7 +2729,7 @@ export default function LuxRiBooking() {
             {notifPermission !== "granted" && notifPermission !== "unsupported" && (
               <button
                 onClick={enableNotifications}
-                className="w-full py-2.5 rounded-sm border text-xs tracking-wide flex items-center justify-center gap-1.5"
+                className="w-full py-2.5 rounded-xl border text-xs tracking-wide flex items-center justify-center gap-1.5"
                 style={{ borderColor: C.gold, color: C.gold }}
               >
                 <Bell size={13} /> Enable Ride Notifications
@@ -2741,7 +2741,7 @@ export default function LuxRiBooking() {
             {driverRides.map((b) => (
               <div
                 key={b.code}
-                className="border rounded-sm p-3 text-sm space-y-2"
+                className="border rounded-xl p-3 text-sm space-y-2"
                 style={{ borderColor: C.border, opacity: b.status === "cancelled" ? 0.5 : 1 }}
               >
                 <div className="flex justify-between items-start">
@@ -2750,7 +2750,7 @@ export default function LuxRiBooking() {
                     <div className="text-xs mt-0.5" style={{ color: C.mutedDark }}>
                       {isToday(b.date) && b.status !== "cancelled" && b.status !== "completed" && (
                         <span
-                          className="text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded-sm mr-1.5"
+                          className="text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded-xl mr-1.5"
                           style={{ background: C.goldWash, color: C.gold }}
                         >
                           Today
@@ -2772,7 +2772,7 @@ export default function LuxRiBooking() {
                     )}
                   </div>
                   <span
-                    className="text-[10px] uppercase tracking-wide px-2 py-1 rounded-sm shrink-0 border"
+                    className="text-[10px] uppercase tracking-wide px-2 py-1 rounded-xl shrink-0 border"
                     style={
                       b.status === "confirmed" || b.status === "completed"
                         ? { background: "#2A2311", color: C.gold, borderColor: C.gold }
@@ -2788,7 +2788,7 @@ export default function LuxRiBooking() {
                       href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(b.pickup)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 text-center py-2 rounded-sm text-xs border"
+                      className="flex-1 text-center py-2 rounded-xl text-xs border"
                       style={{ borderColor: C.border, color: C.mutedDark }}
                     >
                       Directions: Pickup
@@ -2797,7 +2797,7 @@ export default function LuxRiBooking() {
                       href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(b.dropoff)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 text-center py-2 rounded-sm text-xs border"
+                      className="flex-1 text-center py-2 rounded-xl text-xs border"
                       style={{ borderColor: C.border, color: C.mutedDark }}
                     >
                       Directions: Drop-off
@@ -2807,7 +2807,7 @@ export default function LuxRiBooking() {
                 {b.status !== "confirmed" && b.status !== "cancelled" && b.status !== "completed" && (
                   <button
                     onClick={() => confirmBooking(b)}
-                    className="w-full py-2 rounded-sm text-xs tracking-wide flex items-center justify-center gap-1.5"
+                    className="w-full py-2 rounded-xl text-xs tracking-wide flex items-center justify-center gap-1.5 transition-all duration-150 hover:brightness-110 active:scale-[0.97]"
                     style={{ background: goldGradient, color: C.bg }}
                   >
                     <MessageSquare size={12} /> Confirm & Text Customer
@@ -2816,7 +2816,7 @@ export default function LuxRiBooking() {
                 {b.status === "confirmed" && (
                   <button
                     onClick={() => completeBooking(b)}
-                    className="w-full py-2 rounded-sm text-xs tracking-wide border"
+                    className="w-full py-2 rounded-xl text-xs tracking-wide border"
                     style={{ borderColor: C.gold, color: C.gold }}
                   >
                     Mark Ride Complete
@@ -2829,15 +2829,15 @@ export default function LuxRiBooking() {
 
         {mode === "history" && (
           <div
-            className="rounded-sm border p-6 sm:p-8 space-y-3"
-            style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "system-ui, sans-serif" }}
+            className="rounded-xl border p-6 sm:p-8 space-y-3 shadow-2xl shadow-black/50"
+            style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "'Inter', system-ui, sans-serif" }}
           >
             <div className="text-xs tracking-[0.15em] uppercase mb-1" style={{ color: C.mutedDark }}>My Rides</div>
 
             {account && notifPermission !== "granted" && notifPermission !== "unsupported" && (
               <button
                 onClick={() => enableNotifications(account.email)}
-                className="w-full py-2.5 rounded-sm border text-xs tracking-wide flex items-center justify-center gap-1.5"
+                className="w-full py-2.5 rounded-xl border text-xs tracking-wide flex items-center justify-center gap-1.5"
                 style={{ borderColor: C.gold, color: C.gold }}
               >
                 <Bell size={13} /> Get Ride Updates In-App
@@ -2851,7 +2851,7 @@ export default function LuxRiBooking() {
             )}
 
             {account && (
-              <div className="border rounded-sm p-3 space-y-2" style={{ borderColor: C.gold }}>
+              <div className="border rounded-xl p-3 space-y-2" style={{ borderColor: C.gold }}>
                 <div className="text-[11px] tracking-[0.15em] uppercase" style={{ color: C.gold }}>Refer & Earn</div>
                 <div className="text-[11px]" style={{ color: C.mutedDark }}>
                   Send a friend your code — once they take their first ride, you get {REFERRAL_PCT}% off yours.
@@ -2869,7 +2869,7 @@ export default function LuxRiBooking() {
                       inviteContact,
                       `I use LuxRi for private car service and thought you'd like it. Use my code ${account.referralCode} when you create your account for ${FIRST_RIDE_PCT}% off your first ride.`
                     )}
-                    className="px-3 py-2.5 rounded-sm text-xs shrink-0"
+                    className="px-3 py-2.5 rounded-xl text-xs shrink-0"
                     style={{ background: goldGradient, color: C.bg, pointerEvents: inviteContact ? "auto" : "none", opacity: inviteContact ? 1 : 0.4 }}
                   >
                     Send Invite
@@ -2879,7 +2879,7 @@ export default function LuxRiBooking() {
             )}
 
             {account && (account.savedAddresses || []).length > 0 && (
-              <div className="border rounded-sm p-3 space-y-2" style={{ borderColor: C.border }}>
+              <div className="border rounded-xl p-3 space-y-2" style={{ borderColor: C.border }}>
                 <div className="text-[11px] tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
                   Saved Addresses
                 </div>
@@ -2901,13 +2901,13 @@ export default function LuxRiBooking() {
             {history.map((r) => (
               <div
                 key={r.code}
-                className="border rounded-sm p-3 text-sm space-y-2"
+                className="border rounded-xl p-3 text-sm space-y-2"
                 style={{ borderColor: C.border, opacity: r.status === "cancelled" ? 0.5 : 1 }}
               >
                 <div className="flex justify-between items-center" style={{ color: C.ivory }}>
                   <span>{VEHICLES[r.vehicle]?.name}</span>
                   <span
-                    className="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-sm border"
+                    className="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-xl border"
                     style={
                       r.status === "confirmed" || r.status === "completed"
                         ? { color: C.gold, borderColor: C.gold }
@@ -2947,7 +2947,7 @@ export default function LuxRiBooking() {
                       {minutesUntilPickup(r) >= 0 && (
                         <button
                           onClick={() => enterReschedule(r)}
-                          className="flex-1 py-2 rounded-sm text-xs border"
+                          className="flex-1 py-2 rounded-xl text-xs border"
                           style={{ borderColor: C.gold, color: C.gold }}
                         >
                           Reschedule
@@ -2955,7 +2955,7 @@ export default function LuxRiBooking() {
                       )}
                       <button
                         onClick={() => cancelBooking(r)}
-                        className="flex-1 py-2 rounded-sm text-xs border"
+                        className="flex-1 py-2 rounded-xl text-xs border"
                         style={{ borderColor: C.error, color: C.error }}
                       >
                         Cancel Ride
@@ -2978,7 +2978,7 @@ export default function LuxRiBooking() {
                 {(r.status === "completed" || r.status === "cancelled") && (
                   <button
                     onClick={() => bookAgain(r)}
-                    className="w-full py-2 rounded-sm text-xs border"
+                    className="w-full py-2 rounded-xl text-xs border"
                     style={{ borderColor: C.border, color: C.mutedDark }}
                   >
                     Book Again
@@ -2988,7 +2988,7 @@ export default function LuxRiBooking() {
             ))}
             <button
               onClick={() => enterBookingAs(account)}
-              className="w-full py-3 mt-2 rounded-sm text-sm tracking-wide"
+              className="w-full py-3 mt-2 rounded-xl text-sm tracking-wide transition-all duration-150 hover:brightness-110 active:scale-[0.97]"
               style={{ background: goldGradient, color: C.bg }}
             >
               Book a New Ride
@@ -2998,8 +2998,8 @@ export default function LuxRiBooking() {
 
         {mode === "lookup" && (
           <div
-            className="rounded-sm border p-6 sm:p-8 space-y-3"
-            style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "system-ui, sans-serif" }}
+            className="rounded-xl border p-6 sm:p-8 space-y-3 shadow-2xl shadow-black/50"
+            style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "'Inter', system-ui, sans-serif" }}
           >
             <div className="text-xs tracking-[0.15em] uppercase mb-1" style={{ color: C.mutedDark }}>Track a Booking</div>
             <Field placeholder="Confirmation code (e.g. LR-AB12CD)" value={lookupCode} onChange={setLookupCode} />
@@ -3008,7 +3008,7 @@ export default function LuxRiBooking() {
             <button
               onClick={lookupBookingByCode}
               disabled={lookupBusy}
-              className="w-full py-3 rounded-sm text-sm tracking-wide disabled:opacity-40"
+              className="w-full py-3 rounded-xl text-sm tracking-wide disabled:opacity-40 transition-all duration-150 hover:brightness-110 active:scale-[0.97]"
               style={{ background: goldGradient, color: C.bg }}
             >
               {lookupBusy ? "Looking up…" : "Find My Ride"}
@@ -3016,13 +3016,13 @@ export default function LuxRiBooking() {
 
             {lookupBooking && (
               <div
-                className="border rounded-sm p-3 text-sm space-y-2 mt-2"
+                className="border rounded-xl p-3 text-sm space-y-2 mt-2"
                 style={{ borderColor: C.border, opacity: lookupBooking.status === "cancelled" ? 0.5 : 1 }}
               >
                 <div className="flex justify-between items-center" style={{ color: C.ivory }}>
                   <span>{VEHICLES[lookupBooking.vehicle]?.name}</span>
                   <span
-                    className="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-sm border"
+                    className="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-xl border"
                     style={
                       lookupBooking.status === "confirmed" || lookupBooking.status === "completed"
                         ? { color: C.gold, borderColor: C.gold }
@@ -3060,7 +3060,7 @@ export default function LuxRiBooking() {
                       {minutesUntilPickup(lookupBooking) >= 0 && (
                         <button
                           onClick={() => enterReschedule(lookupBooking)}
-                          className="flex-1 py-2 rounded-sm text-xs border"
+                          className="flex-1 py-2 rounded-xl text-xs border"
                           style={{ borderColor: C.gold, color: C.gold }}
                         >
                           Reschedule
@@ -3068,7 +3068,7 @@ export default function LuxRiBooking() {
                       )}
                       <button
                         onClick={() => cancelBooking(lookupBooking, setLookupBooking)}
-                        className="flex-1 py-2 rounded-sm text-xs border"
+                        className="flex-1 py-2 rounded-xl text-xs border"
                         style={{ borderColor: C.error, color: C.error }}
                       >
                         Cancel Ride
@@ -3087,7 +3087,7 @@ export default function LuxRiBooking() {
                 {(lookupBooking.status === "completed" || lookupBooking.status === "cancelled") && (
                   <button
                     onClick={() => bookAgain(lookupBooking)}
-                    className="w-full py-2 rounded-sm text-xs border"
+                    className="w-full py-2 rounded-xl text-xs border"
                     style={{ borderColor: C.border, color: C.mutedDark }}
                   >
                     Book Again
@@ -3103,8 +3103,8 @@ export default function LuxRiBooking() {
 
         {mode === "terms" && (
           <div
-            className="rounded-sm border p-6 sm:p-8 space-y-4"
-            style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "system-ui, sans-serif" }}
+            className="rounded-xl border p-6 sm:p-8 space-y-4 shadow-2xl shadow-black/50"
+            style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "'Inter', system-ui, sans-serif" }}
           >
             <div className="text-xs tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
               Terms of Service & Cancellation Policy
@@ -3127,8 +3127,8 @@ export default function LuxRiBooking() {
 
         {mode === "install" && (
           <div
-            className="rounded-sm border p-6 sm:p-8 space-y-4"
-            style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "system-ui, sans-serif" }}
+            className="rounded-xl border p-6 sm:p-8 space-y-4 shadow-2xl shadow-black/50"
+            style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "'Inter', system-ui, sans-serif" }}
           >
             <div className="text-center space-y-1">
               <div className="text-lg" style={{ color: C.ivory }}>Get LuxRi on Your Home Screen</div>
@@ -3140,7 +3140,7 @@ export default function LuxRiBooking() {
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => setInstallTab("ios")}
-                className="py-2.5 text-xs tracking-[0.1em] uppercase border rounded-sm"
+                className="py-2.5 text-xs tracking-[0.1em] uppercase border rounded-xl"
                 style={
                   installTab === "ios"
                     ? { borderColor: C.gold, color: C.ivory, background: C.goldWash }
@@ -3151,7 +3151,7 @@ export default function LuxRiBooking() {
               </button>
               <button
                 onClick={() => setInstallTab("android")}
-                className="py-2.5 text-xs tracking-[0.1em] uppercase border rounded-sm"
+                className="py-2.5 text-xs tracking-[0.1em] uppercase border rounded-xl"
                 style={
                   installTab === "android"
                     ? { borderColor: C.gold, color: C.ivory, background: C.goldWash }
@@ -3218,8 +3218,8 @@ export default function LuxRiBooking() {
             </div>
 
             <div
-              className="rounded-sm border p-6 sm:p-8"
-              style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "system-ui, sans-serif" }}
+              className="rounded-xl border p-6 sm:p-8 shadow-2xl shadow-black/50"
+              style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "'Inter', system-ui, sans-serif" }}
             >
               {step === 0 && (
                 <div className="space-y-6">
@@ -3235,7 +3235,7 @@ export default function LuxRiBooking() {
                       <button
                         key={t.key}
                         onClick={() => setTripType(t.key)}
-                        className="py-3 text-xs tracking-[0.1em] uppercase border rounded-sm transition-colors"
+                        className="py-3 text-xs tracking-[0.1em] uppercase border rounded-xl transition-colors"
                         style={
                           tripType === t.key
                             ? { borderColor: C.gold, color: C.ivory, background: C.goldWash }
@@ -3255,7 +3255,7 @@ export default function LuxRiBooking() {
                             <button
                               type="button"
                               onClick={() => useSavedAddress(pickup ? "dropoff" : "pickup", a)}
-                              className="text-[11px] px-2 py-1 rounded-sm border"
+                              className="text-[11px] px-2 py-1 rounded-xl border"
                               style={{ borderColor: C.border, color: C.mutedDark }}
                             >
                               {a.label}
@@ -3309,7 +3309,7 @@ export default function LuxRiBooking() {
                     )}
                     <div className="space-y-1">
                       <div
-                        className="flex items-center gap-2 border rounded-sm px-3 py-2.5"
+                        className="flex items-center gap-2 border rounded-xl px-3 py-2.5"
                         style={{ borderColor: C.border }}
                       >
                         <Car size={16} style={{ color: C.mutedDark }} />
@@ -3357,7 +3357,7 @@ export default function LuxRiBooking() {
                   {slotError && suggestedTime && (
                     <button
                       onClick={() => { setTime(suggestedTime); setSlotError(""); setSuggestedTime(null); }}
-                      className="text-xs tracking-wide px-3 py-2 rounded-sm border"
+                      className="text-xs tracking-wide px-3 py-2 rounded-xl border"
                       style={{ borderColor: C.gold, color: C.gold }}
                     >
                       Try {suggestedTime} instead
@@ -3377,7 +3377,7 @@ export default function LuxRiBooking() {
                     Choose your vehicle
                   </div>
                   {(Number(passengers) > 4 || Number(luggage) > 3) && (
-                    <div className="text-xs border rounded-sm p-2.5" style={{ borderColor: C.gold, color: C.gold }}>
+                    <div className="text-xs border rounded-xl p-2.5" style={{ borderColor: C.gold, color: C.gold }}>
                       With your group size, the BMW X7 is the better fit.
                     </div>
                   )}
@@ -3390,7 +3390,7 @@ export default function LuxRiBooking() {
                         key={key}
                         onClick={() => fits && setVehicle(key)}
                         disabled={!fits}
-                        className="w-full text-left rounded-sm border p-4 flex items-center justify-between transition-colors disabled:opacity-40"
+                        className="w-full text-left rounded-xl border p-4 flex items-center justify-between transition-colors disabled:opacity-40"
                         style={{
                           borderColor: vehicle === key ? v.color : C.border,
                           background: vehicle === key ? v.dark : "transparent",
@@ -3432,7 +3432,7 @@ export default function LuxRiBooking() {
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     rows={3}
-                    className="w-full rounded-sm px-3 py-2 text-sm focus:outline-none resize-none border"
+                    className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none resize-none border"
                     style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
                   />
                   <div className="text-[11px] tracking-[0.15em] uppercase pt-1" style={{ color: C.mutedDark }}>
@@ -3443,7 +3443,7 @@ export default function LuxRiBooking() {
                       <button
                         key={p}
                         onClick={() => { setTipMode("pct"); setTipPct(p); }}
-                        className="py-2.5 text-xs rounded-sm border"
+                        className="py-2.5 text-xs rounded-xl border"
                         style={
                           tipMode === "pct" && tipPct === p
                             ? { borderColor: C.gold, color: C.ivory, background: C.goldWash }
@@ -3455,7 +3455,7 @@ export default function LuxRiBooking() {
                     ))}
                     <button
                       onClick={() => setTipMode("custom")}
-                      className="py-2.5 text-xs rounded-sm border"
+                      className="py-2.5 text-xs rounded-xl border"
                       style={
                         tipMode === "custom"
                           ? { borderColor: C.gold, color: C.ivory, background: C.goldWash }
@@ -3469,22 +3469,22 @@ export default function LuxRiBooking() {
                     <Field placeholder="Custom tip amount" value={customTip} onChange={setCustomTip} type="number" />
                   )}
                   {discountType === "loyalty" && (
-                    <div className="text-xs border rounded-sm p-2.5" style={{ borderColor: C.gold, color: C.gold }}>
+                    <div className="text-xs border rounded-xl p-2.5" style={{ borderColor: C.gold, color: C.gold }}>
                       Loyalty reward — this is your {LOYALTY_EVERY}th ride, 50% off the fare!
                     </div>
                   )}
                   {discountType === "business" && (
-                    <div className="text-xs border rounded-sm p-2.5" style={{ borderColor: C.gold, color: C.gold }}>
+                    <div className="text-xs border rounded-xl p-2.5" style={{ borderColor: C.gold, color: C.gold }}>
                       {account?.business} rate applied — {businessPct}% off the fare.
                     </div>
                   )}
                   {discountType === "referral" && (
-                    <div className="text-xs border rounded-sm p-2.5" style={{ borderColor: C.gold, color: C.gold }}>
+                    <div className="text-xs border rounded-xl p-2.5" style={{ borderColor: C.gold, color: C.gold }}>
                       Referral reward applied — {REFERRAL_PCT}% off the fare!
                     </div>
                   )}
                   {discountType === "firstRide" && (
-                    <div className="text-xs border rounded-sm p-2.5" style={{ borderColor: C.gold, color: C.gold }}>
+                    <div className="text-xs border rounded-xl p-2.5" style={{ borderColor: C.gold, color: C.gold }}>
                       Welcome to LuxRi — {FIRST_RIDE_PCT}% off your first ride!
                     </div>
                   )}
@@ -3528,7 +3528,7 @@ export default function LuxRiBooking() {
                           tripType === "round" && returnDate ? `, return ${returnDate} at ${returnTime}` : ""
                         }, ${VEHICLES[vehicle]?.name}, ${pickup} to ${dropoff}. Ref ${confirmCode}.`
                       )}
-                      className="text-xs tracking-[0.1em] uppercase px-4 py-2.5 rounded-sm flex items-center gap-1.5"
+                      className="text-xs tracking-[0.1em] uppercase px-4 py-2.5 rounded-xl flex items-center gap-1.5"
                       style={{ color: C.bg, background: goldGradient }}
                     >
                       <MessageSquare size={13} /> Notify My Chauffeur
@@ -3541,14 +3541,14 @@ export default function LuxRiBooking() {
                           0
                         )}\nTotal: $${total.toFixed(0)}`
                       )}`}
-                      className="text-xs tracking-[0.1em] uppercase px-4 py-2.5 rounded-sm border flex items-center gap-1.5"
+                      className="text-xs tracking-[0.1em] uppercase px-4 py-2.5 rounded-xl border flex items-center gap-1.5"
                       style={{ borderColor: C.border, color: C.mutedDark }}
                     >
                       Email Receipt
                     </a>
                     <button
                       onClick={() => enableNotifications(email)}
-                      className="text-xs tracking-[0.1em] uppercase px-4 py-2.5 rounded-sm border flex items-center gap-1.5"
+                      className="text-xs tracking-[0.1em] uppercase px-4 py-2.5 rounded-xl border flex items-center gap-1.5"
                       style={{ borderColor: C.border, color: C.mutedDark }}
                     >
                       <Bell size={13} /> Notify Me In-App Instead
@@ -3566,7 +3566,7 @@ export default function LuxRiBooking() {
                     )}
                   </div>
                   {!account && (
-                    <div className="border rounded-sm p-3 mt-3 text-left" style={{ borderColor: C.gold }}>
+                    <div className="border rounded-xl p-3 mt-3 text-left" style={{ borderColor: C.gold }}>
                       <div className="text-xs" style={{ color: C.ivory }}>
                         Save these details for faster booking next time?
                       </div>
@@ -3584,7 +3584,7 @@ export default function LuxRiBooking() {
                           setSignupFromNudge(true);
                           navigate("signup");
                         }}
-                        className="w-full mt-2 py-2 rounded-sm text-xs tracking-wide"
+                        className="w-full mt-2 py-2 rounded-xl text-xs tracking-wide transition-all duration-150 hover:brightness-110 active:scale-[0.97]"
                         style={{ background: goldGradient, color: C.bg }}
                       >
                         Create Account
@@ -3610,7 +3610,7 @@ export default function LuxRiBooking() {
                     <button
                       onClick={submitBooking}
                       disabled={!canNext() || saving}
-                      className="flex items-center gap-1.5 px-5 py-2.5 rounded-sm text-sm tracking-wide disabled:opacity-40"
+                      className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm tracking-wide disabled:opacity-40 transition-all duration-150 hover:brightness-110 active:scale-[0.97]"
                       style={{ background: goldGradient, color: C.bg }}
                     >
                       {saving ? (
@@ -3627,7 +3627,7 @@ export default function LuxRiBooking() {
                     <button
                       onClick={goNext}
                       disabled={!canNext() || checkingSlot}
-                      className="flex items-center gap-1.5 px-5 py-2.5 rounded-sm text-sm tracking-wide disabled:opacity-40"
+                      className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm tracking-wide disabled:opacity-40 transition-all duration-150 hover:brightness-110 active:scale-[0.97]"
                       style={{ background: goldGradient, color: C.bg }}
                     >
                       {checkingSlot ? (
@@ -3655,7 +3655,7 @@ export default function LuxRiBooking() {
 
         <div
           className="mt-6 text-center text-[11px] tracking-[0.1em]"
-          style={{ color: C.faintest, fontFamily: "system-ui, sans-serif" }}
+          style={{ color: C.faintest, fontFamily: "'Inter', system-ui, sans-serif" }}
         >
           LuxRi Driving Services · One-Way · Round Trip · Airport
           <div className="mt-1 flex items-center justify-center gap-3">
