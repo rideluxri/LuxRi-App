@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Plane, MapPin, Car, ChevronRight, ChevronLeft, Check, Clock, Users, User, ArrowRight, MessageSquare, Bell, Menu } from "lucide-react";
+import { Plane, MapPin, Car, ChevronRight, ChevronLeft, Check, Clock, Users, User, ArrowRight, MessageSquare, Bell, Menu, Loader2 } from "lucide-react";
 import { storage } from "./lib/storage";
 import { AddressField } from "./components/AddressField";
 
@@ -274,6 +274,23 @@ function detectPlatform() {
   const ua = navigator.userAgent || "";
   if (/android/i.test(ua)) return "android";
   return "ios";
+}
+
+function isToday(dateStr) {
+  return dateStr === new Date().toISOString().slice(0, 10);
+}
+
+function statusLabel(status) {
+  switch (status) {
+    case "confirmed":
+      return "Confirmed";
+    case "completed":
+      return "Complete";
+    case "cancelled":
+      return "Cancelled";
+    default:
+      return "Requested";
+  }
 }
 
 function normEmail(e) {
@@ -1064,7 +1081,15 @@ export default function LuxRiBooking() {
         const res = await storage.get(k);
         if (res) items.push(JSON.parse(res.value));
       }
-      items.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const isTodayActive = (x) => x.date === todayStr && x.status !== "cancelled" && x.status !== "completed";
+      items.sort((a, b) => {
+        const aToday = isTodayActive(a) ? 0 : 1;
+        const bToday = isTodayActive(b) ? 0 : 1;
+        if (aToday !== bToday) return aToday - bToday;
+        if (aToday === 0) return timeToMinutes(a.time) - timeToMinutes(b.time);
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      });
       setDashBookings(items);
 
       const acctList = await storage.list("account:");
@@ -1107,7 +1132,15 @@ export default function LuxRiBooking() {
           if (b.assignedDriverEmail && normEmail(b.assignedDriverEmail) === normEmail(acct.email)) items.push(b);
         }
       }
-      items.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      const todayStr2 = new Date().toISOString().slice(0, 10);
+      const isTodayActive2 = (x) => x.date === todayStr2 && x.status !== "cancelled" && x.status !== "completed";
+      items.sort((a, b) => {
+        const aToday = isTodayActive2(a) ? 0 : 1;
+        const bToday = isTodayActive2(b) ? 0 : 1;
+        if (aToday !== bToday) return aToday - bToday;
+        if (aToday === 0) return timeToMinutes(a.time) - timeToMinutes(b.time);
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      });
       setDriverRides(items);
     } catch {
       setDriverRides([]);
@@ -2011,6 +2044,11 @@ export default function LuxRiBooking() {
                 Sign Out
               </button>
             </div>
+            {dashBusy && !dashBookings && (
+              <div className="flex items-center justify-center gap-2 py-4 text-xs" style={{ color: C.mutedDark }}>
+                <Loader2 size={14} className="animate-spin" /> Loading your dashboard…
+              </div>
+            )}
             {notifPermission !== "granted" && notifPermission !== "unsupported" && (
               <button
                 onClick={enableNotifications}
@@ -2373,7 +2411,7 @@ export default function LuxRiBooking() {
                                       {b.date} · {VEHICLES[b.vehicle]?.name}
                                       {accountsFilter === "drivers" && ` · ${b.name}`}
                                     </span>
-                                    <span style={{ color: C.mutedDark }}>{b.status || "pending"}</span>
+                                    <span style={{ color: C.mutedDark }}>{statusLabel(b.status)}</span>
                                   </div>
                                   {accountsFilter === "customers" && (
                                     <div style={{ color: C.mutedDark }}>
@@ -2458,7 +2496,7 @@ export default function LuxRiBooking() {
             </div>
 
             {(!dashBookings || dashBookings.length === 0) && (
-              <div className="text-sm" style={{ color: C.mutedDark }}>No bookings yet.</div>
+              <div className="text-sm" style={{ color: C.mutedDark }}>No bookings yet — they'll show up here the moment someone books a ride.</div>
             )}
             {dashBookings &&
               dashBookings.map((b) => (
@@ -2474,11 +2512,23 @@ export default function LuxRiBooking() {
                         {b.business && <span style={{ color: C.gold }}> · {b.business}</span>}
                       </div>
                       <div className="text-xs mt-0.5" style={{ color: C.mutedDark }}>
+                        {isToday(b.date) && b.status !== "cancelled" && b.status !== "completed" && (
+                          <span
+                            className="text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded-sm mr-1.5"
+                            style={{ background: C.goldWash, color: C.gold }}
+                          >
+                            Today
+                          </span>
+                        )}
                         {b.date} · {b.time} · {b.tripType} · ${Number(b.total ?? b.fare).toFixed(0)}
                         {b.tripType === "round" && b.returnDate ? ` · return ${b.returnDate} ${b.returnTime}` : ""}
                       </div>
                       <div className="text-xs" style={{ color: C.mutedDark }}>{b.pickup} → {b.dropoff}</div>
-                      <div className="text-xs" style={{ color: C.mutedDark }}>{b.phone}</div>
+                      <div className="text-xs">
+                        <a href={`tel:${b.phone}`} style={{ color: C.mutedDark }}>
+                          {b.phone} <span style={{ color: C.gold }}>(call)</span>
+                        </a>
+                      </div>
                       {(b.passengers || b.luggage) && (
                         <div className="text-xs" style={{ color: C.mutedDark }}>
                           {b.passengers && `${b.passengers} pax`}{b.passengers && b.luggage ? " · " : ""}{b.luggage && `${b.luggage} bags`}
@@ -2501,7 +2551,7 @@ export default function LuxRiBooking() {
                           : { background: "transparent", color: C.mutedDark, borderColor: C.border }
                       }
                     >
-                      {b.status || "pending"}
+                      {statusLabel(b.status)}
                     </span>
                   </div>
                   {drivers.length > 0 && b.status !== "cancelled" && (
@@ -2686,7 +2736,7 @@ export default function LuxRiBooking() {
               </button>
             )}
             {driverRides.length === 0 && (
-              <div className="text-sm" style={{ color: C.mutedDark }}>No rides assigned to you yet.</div>
+              <div className="text-sm" style={{ color: C.mutedDark }}>Nothing on your plate yet — check back once a ride comes your way.</div>
             )}
             {driverRides.map((b) => (
               <div
@@ -2698,11 +2748,23 @@ export default function LuxRiBooking() {
                   <div>
                     <div style={{ color: C.ivory }}>{b.name} · {VEHICLES[b.vehicle]?.name}</div>
                     <div className="text-xs mt-0.5" style={{ color: C.mutedDark }}>
+                      {isToday(b.date) && b.status !== "cancelled" && b.status !== "completed" && (
+                        <span
+                          className="text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded-sm mr-1.5"
+                          style={{ background: C.goldWash, color: C.gold }}
+                        >
+                          Today
+                        </span>
+                      )}
                       {b.date} · {b.time} · {b.tripType}
                       {b.tripType === "round" && b.returnDate ? ` · return ${b.returnDate} ${b.returnTime}` : ""}
                     </div>
                     <div className="text-xs" style={{ color: C.mutedDark }}>{b.pickup} → {b.dropoff}</div>
-                    <div className="text-xs" style={{ color: C.mutedDark }}>{b.phone}</div>
+                    <div className="text-xs">
+                      <a href={`tel:${b.phone}`} style={{ color: C.mutedDark }}>
+                        {b.phone} <span style={{ color: C.gold }}>(call)</span>
+                      </a>
+                    </div>
                     {(b.passengers || b.luggage) && (
                       <div className="text-xs" style={{ color: C.mutedDark }}>
                         {b.passengers && `${b.passengers} pax`}{b.passengers && b.luggage ? " · " : ""}{b.luggage && `${b.luggage} bags`}
@@ -2717,7 +2779,7 @@ export default function LuxRiBooking() {
                         : { background: "transparent", color: C.mutedDark, borderColor: C.border }
                     }
                   >
-                    {b.status || "pending"}
+                    {statusLabel(b.status)}
                   </span>
                 </div>
                 {b.status !== "cancelled" && b.status !== "completed" && (
@@ -2835,7 +2897,7 @@ export default function LuxRiBooking() {
               </div>
             )}
 
-            {history.length === 0 && <div className="text-sm" style={{ color: C.mutedDark }}>No rides booked yet.</div>}
+            {history.length === 0 && <div className="text-sm" style={{ color: C.mutedDark }}>Your first ride is just a few taps away — book whenever you're ready.</div>}
             {history.map((r) => (
               <div
                 key={r.code}
@@ -2852,7 +2914,7 @@ export default function LuxRiBooking() {
                         : { color: C.mutedDark, borderColor: C.border }
                     }
                   >
-                    {r.status || "pending"}
+                    {statusLabel(r.status)}
                   </span>
                 </div>
                 <div className="text-xs" style={{ color: C.mutedDark }}>
@@ -2967,7 +3029,7 @@ export default function LuxRiBooking() {
                         : { color: C.mutedDark, borderColor: C.border }
                     }
                   >
-                    {lookupBooking.status || "pending"}
+                    {statusLabel(lookupBooking.status)}
                   </span>
                 </div>
                 <div className="text-xs" style={{ color: C.mutedDark }}>
@@ -3275,6 +3337,9 @@ export default function LuxRiBooking() {
                     <Field icon={<Clock size={16} />} placeholder="" value={date} onChange={(v) => { setDate(v); setSlotError(""); setSuggestedTime(null); }} type="date" />
                     <Field icon={<Clock size={16} />} placeholder="" value={time} onChange={(v) => { setTime(v); setSlotError(""); setSuggestedTime(null); }} type="time" />
                   </div>
+                  <div className="text-[11px]" style={{ color: C.faint }}>
+                    Free to cancel or reschedule anytime up to 1 hour before pickup.
+                  </div>
                   {tripType === "round" && (
                     <div className="space-y-2">
                       <div className="text-[11px] tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
@@ -3545,19 +3610,35 @@ export default function LuxRiBooking() {
                     <button
                       onClick={submitBooking}
                       disabled={!canNext() || saving}
-                      className="flex items-center gap-1 px-5 py-2.5 rounded-sm text-sm tracking-wide disabled:opacity-40"
+                      className="flex items-center gap-1.5 px-5 py-2.5 rounded-sm text-sm tracking-wide disabled:opacity-40"
                       style={{ background: goldGradient, color: C.bg }}
                     >
-                      {saving ? "Saving…" : rescheduling ? "Save New Time" : "Request Ride"}
+                      {saving ? (
+                        <>
+                          <Loader2 size={15} className="animate-spin" /> Saving…
+                        </>
+                      ) : rescheduling ? (
+                        "Save New Time"
+                      ) : (
+                        "Request Ride"
+                      )}
                     </button>
                   ) : (
                     <button
                       onClick={goNext}
                       disabled={!canNext() || checkingSlot}
-                      className="flex items-center gap-1 px-5 py-2.5 rounded-sm text-sm tracking-wide disabled:opacity-40"
+                      className="flex items-center gap-1.5 px-5 py-2.5 rounded-sm text-sm tracking-wide disabled:opacity-40"
                       style={{ background: goldGradient, color: C.bg }}
                     >
-                      {checkingSlot ? "Checking…" : (<>Continue <ChevronRight size={16} /></>)}
+                      {checkingSlot ? (
+                        <>
+                          <Loader2 size={15} className="animate-spin" /> Checking…
+                        </>
+                      ) : (
+                        <>
+                          Continue <ChevronRight size={16} />
+                        </>
+                      )}
                     </button>
                   )}
                 </div>
