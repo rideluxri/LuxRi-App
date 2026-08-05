@@ -18,6 +18,11 @@ const MODE_PATHS = {
   driverRides: "/my-rides-driver",
   terms: "/terms",
   install: "/get-the-app",
+  availability: "/dashboard/availability",
+  promotions: "/dashboard/promotions",
+  drivers: "/dashboard/drivers",
+  accounts: "/dashboard/accounts",
+  reviews: "/dashboard/reviews",
 };
 
 const TERMS_SECTIONS = [
@@ -1931,6 +1936,41 @@ export default function LuxRiBooking() {
                       Dashboard
                     </button>
                     <button
+                      onClick={() => { setMenuOpen(false); navigate("availability"); }}
+                      className="w-full text-left px-3 py-2 text-xs"
+                      style={{ color: C.ivory }}
+                    >
+                      Availability
+                    </button>
+                    <button
+                      onClick={() => { setMenuOpen(false); navigate("drivers"); }}
+                      className="w-full text-left px-3 py-2 text-xs"
+                      style={{ color: C.ivory }}
+                    >
+                      Drivers
+                    </button>
+                    <button
+                      onClick={() => { setMenuOpen(false); navigate("accounts"); }}
+                      className="w-full text-left px-3 py-2 text-xs"
+                      style={{ color: C.ivory }}
+                    >
+                      Accounts
+                    </button>
+                    <button
+                      onClick={() => { setMenuOpen(false); navigate("promotions"); }}
+                      className="w-full text-left px-3 py-2 text-xs"
+                      style={{ color: C.ivory }}
+                    >
+                      Business Promotions
+                    </button>
+                    <button
+                      onClick={() => { setMenuOpen(false); navigate("reviews"); }}
+                      className="w-full text-left px-3 py-2 text-xs"
+                      style={{ color: C.ivory }}
+                    >
+                      Reviews & Ratings
+                    </button>
+                    <button
                       onClick={() => { setMenuOpen(false); handleSignOut(); }}
                       className="w-full text-left px-3 py-2 text-xs"
                       style={{ color: C.error }}
@@ -2161,401 +2201,6 @@ export default function LuxRiBooking() {
               >
                 Export Bookings to CSV
               </button>
-            </div>
-
-            <div className="border rounded-xl p-3 space-y-2" style={{ borderColor: C.border }}>
-              <div className="text-[11px] tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
-                Availability {hoursSaving && <span style={{ color: C.gold }}>· saving…</span>}
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {DAY_NAMES.map((d, i) => (
-                  <button
-                    key={d}
-                    onClick={() => toggleDay(i)}
-                    className="px-2.5 py-1.5 rounded-xl text-[11px] border"
-                    style={
-                      hours.days.includes(i)
-                        ? { borderColor: C.gold, color: C.gold, background: C.goldWash }
-                        : { borderColor: C.border, color: C.faint }
-                    }
-                  >
-                    {d}
-                  </button>
-                ))}
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <Field
-                  icon={<Clock size={14} />}
-                  placeholder=""
-                  value={hours.start}
-                  onChange={(v) => saveHours({ ...hours, start: v })}
-                  type="time"
-                />
-                <Field
-                  icon={<Clock size={14} />}
-                  placeholder=""
-                  value={hours.end}
-                  onChange={(v) => saveHours({ ...hours, end: v })}
-                  type="time"
-                />
-              </div>
-              <div className="flex gap-2 items-center">
-                <Field placeholder="" value={blockedDateInput} onChange={setBlockedDateInput} type="date" />
-                <button
-                  onClick={addBlockedDate}
-                  className="px-3 py-2.5 rounded-xl text-xs border shrink-0"
-                  style={{ borderColor: C.border, color: C.mutedDark }}
-                >
-                  Block Date
-                </button>
-              </div>
-              {(hours.blockedDates || []).length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {hours.blockedDates.map((d) => (
-                    <span
-                      key={d}
-                      className="text-[11px] px-2 py-1 rounded-xl border flex items-center gap-1.5"
-                      style={{ borderColor: C.border, color: C.mutedDark }}
-                    >
-                      {d}
-                      <button onClick={() => removeBlockedDate(d)} style={{ color: C.error }}>
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              <div className="pt-2 border-t space-y-2" style={{ borderColor: C.border }}>
-                <div className="text-[11px] tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
-                  Block a Date/Time Range
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <Field placeholder="" value={blockedPeriodStartDate} onChange={setBlockedPeriodStartDate} type="date" />
-                  <Field placeholder="" value={blockedPeriodStartTime} onChange={setBlockedPeriodStartTime} type="time" />
-                </div>
-                <div className="text-[10px] uppercase tracking-wide" style={{ color: C.faint }}>to</div>
-                <div className="grid grid-cols-2 gap-2">
-                  <Field placeholder="" value={blockedPeriodEndDate} onChange={setBlockedPeriodEndDate} type="date" />
-                  <Field placeholder="" value={blockedPeriodEndTime} onChange={setBlockedPeriodEndTime} type="time" />
-                </div>
-                <button
-                  onClick={addBlockedPeriod}
-                  className="w-full py-2 rounded-xl text-xs border"
-                  style={{ borderColor: C.border, color: C.mutedDark }}
-                >
-                  Block This Range
-                </button>
-                {(hours.blockedPeriods || []).length > 0 && (
-                  <div className="space-y-1.5">
-                    {hours.blockedPeriods.map((p, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center justify-between text-[11px] px-2 py-1.5 rounded-xl border"
-                        style={{ borderColor: C.border, color: C.mutedDark }}
-                      >
-                        <span>
-                          {p.startDate} {p.startTime} → {p.endDate} {p.endTime}
-                        </span>
-                        <button onClick={() => removeBlockedPeriod(i)} style={{ color: C.error }}>
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="border rounded-xl p-3 space-y-2" style={{ borderColor: C.border }}>
-              <div className="text-[11px] tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
-                Business Promotions {promoSaving && <span style={{ color: C.gold }}>· saving…</span>}
-              </div>
-              <div className="text-[11px]" style={{ color: C.faint }}>
-                Give customers who booked with a company name a percentage off every ride.
-              </div>
-              <div className="flex gap-2">
-                <Field placeholder="Company name" value={promoBusinessInput} onChange={setPromoBusinessInput} />
-                <div className="w-20 shrink-0">
-                  <Field placeholder="%" value={promoPctInput} onChange={setPromoPctInput} type="number" />
-                </div>
-                <button
-                  onClick={savePromo}
-                  className="px-3 py-2.5 rounded-xl text-xs border shrink-0"
-                  style={{ borderColor: C.gold, color: C.gold }}
-                >
-                  Add
-                </button>
-              </div>
-              {Object.keys(promos).length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {Object.entries(promos).map(([biz, pct]) => (
-                    <span
-                      key={biz}
-                      className="text-[11px] px-2 py-1 rounded-xl border flex items-center gap-1.5"
-                      style={{ borderColor: C.border, color: C.mutedDark }}
-                    >
-                      {biz} — {pct}%
-                      <button onClick={() => removePromo(biz)} style={{ color: C.error }}>
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="border rounded-xl p-3 space-y-2" style={{ borderColor: C.border }}>
-              <div className="text-[11px] tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
-                Drivers {inviteGenBusy && <span style={{ color: C.gold }}>· generating…</span>}
-              </div>
-              {drivers.length > 0 && (
-                <div className="space-y-1.5">
-                  {drivers.map((d) => {
-                    const stats = computeDriverStats(dashBookings, d.email);
-                    return (
-                      <div key={d.email} className="text-xs" style={{ color: C.ivory }}>
-                        {d.name} <span style={{ color: C.mutedDark }}>· {d.phone}</span>
-                        <span style={{ color: C.mutedDark }}>
-                          {" "}
-                          · {stats.rideCount} ride{stats.rideCount === 1 ? "" : "s"}
-                          {stats.avgRating != null && <span style={{ color: C.gold }}> · {stats.avgRating.toFixed(1)}★</span>}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-              {drivers.length === 0 && <div className="text-xs" style={{ color: C.mutedDark }}>No drivers added yet.</div>}
-              <button
-                onClick={generateDriverInvite}
-                className="w-full py-2.5 rounded-xl text-xs border"
-                style={{ borderColor: C.gold, color: C.gold }}
-              >
-                Generate Driver Invite Code
-              </button>
-              {driverInvites.filter((i) => i.status === "pending").length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {driverInvites
-                    .filter((i) => i.status === "pending")
-                    .map((i) => (
-                      <span
-                        key={i.code}
-                        className="text-[11px] px-2 py-1 rounded-xl border"
-                        style={{ borderColor: C.border, color: C.gold }}
-                      >
-                        {i.code} (unused)
-                      </span>
-                    ))}
-                </div>
-              )}
-              <div className="text-[11px]" style={{ color: C.faint }}>
-                Give a driver this code — they'll enter it as a "staff code" when creating their account.
-              </div>
-            </div>
-
-            <div className="border rounded-xl p-3 space-y-3" style={{ borderColor: C.border }}>
-              <div className="flex items-center justify-between">
-                <div className="text-[11px] tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
-                  Accounts
-                </div>
-                <div className="flex gap-1.5">
-                  <button
-                    onClick={() => setAccountsFilter("customers")}
-                    className="text-[11px] px-2 py-1 rounded-xl border"
-                    style={
-                      accountsFilter === "customers"
-                        ? { borderColor: C.gold, color: C.gold }
-                        : { borderColor: C.border, color: C.mutedDark }
-                    }
-                  >
-                    Customers ({customers.length})
-                  </button>
-                  <button
-                    onClick={() => setAccountsFilter("drivers")}
-                    className="text-[11px] px-2 py-1 rounded-xl border"
-                    style={
-                      accountsFilter === "drivers"
-                        ? { borderColor: C.gold, color: C.gold }
-                        : { borderColor: C.border, color: C.mutedDark }
-                    }
-                  >
-                    Drivers ({drivers.length})
-                  </button>
-                </div>
-              </div>
-
-              {(accountsFilter === "customers" ? customers : drivers).length === 0 && (
-                <div className="text-xs" style={{ color: C.mutedDark }}>
-                  No {accountsFilter} yet.
-                </div>
-              )}
-
-              {(accountsFilter === "customers" ? customers : drivers).map((acct) => {
-                const rideCount = (dashBookings || []).filter(
-                  (b) => normEmail(b.email || "") === normEmail(acct.email) && b.status !== "cancelled"
-                ).length;
-                const isEditing = editingAccountEmail === acct.email;
-                return (
-                  <div key={acct.email} className="border rounded-xl p-3 space-y-2 text-xs" style={{ borderColor: C.border }}>
-                    {!isEditing ? (
-                      <>
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <div style={{ color: C.ivory }}>{acct.name}</div>
-                            <div style={{ color: C.mutedDark }}>{acct.email}</div>
-                            <div style={{ color: C.mutedDark }}>{acct.phone}</div>
-                            {acct.business && <div style={{ color: C.mutedDark }}>Business: {acct.business}</div>}
-                            <div style={{ color: C.mutedDark }}>{rideCount} ride{rideCount === 1 ? "" : "s"}</div>
-                            {accountsFilter === "customers" && !acct.business && (
-                              <div style={{ color: C.mutedDark }}>
-                                {rideCount % LOYALTY_EVERY} of {LOYALTY_EVERY} rides toward next loyalty discount
-                              </div>
-                            )}
-                            {accountsFilter === "customers" && (acct.referralRewardsAvailable || 0) > 0 && (
-                              <div style={{ color: C.gold }}>{acct.referralRewardsAvailable} referral reward{acct.referralRewardsAvailable > 1 ? "s" : ""} unused</div>
-                            )}
-                            {accountsFilter === "customers" && acct.referredBy && (
-                              <div style={{ color: C.mutedDark }}>
-                                Referred by code {acct.referredBy} {acct.referralConsumed ? "(credited)" : "(pending first ride)"}
-                              </div>
-                            )}
-                          </div>
-                          <span
-                            className="text-[10px] uppercase tracking-wide px-2 py-1 rounded-xl border shrink-0"
-                            style={{ borderColor: C.border, color: C.mutedDark }}
-                          >
-                            {acct.role || "customer"}
-                          </span>
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setExpandedAccountEmail(expandedAccountEmail === acct.email ? null : acct.email)}
-                            className="flex-1 py-1.5 rounded-xl border"
-                            style={{ borderColor: C.gold, color: C.gold }}
-                          >
-                            {expandedAccountEmail === acct.email ? "Hide Rides" : "View Rides"}
-                          </button>
-                          <button
-                            onClick={() => startEditAccount(acct)}
-                            className="flex-1 py-1.5 rounded-xl border"
-                            style={{ borderColor: C.border, color: C.mutedDark }}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => resetAccountPassword(acct)}
-                            className="flex-1 py-1.5 rounded-xl border"
-                            style={{ borderColor: C.border, color: C.mutedDark }}
-                          >
-                            Reset Password
-                          </button>
-                          <button
-                            onClick={() => deleteAccount(acct)}
-                            className="flex-1 py-1.5 rounded-xl border"
-                            style={{ borderColor: C.error, color: C.error }}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                        {expandedAccountEmail === acct.email && (
-                          <div className="space-y-1.5 pt-1 border-t" style={{ borderColor: C.border }}>
-                            {(dashBookings || [])
-                              .filter((b) =>
-                                accountsFilter === "customers"
-                                  ? normEmail(b.email || "") === normEmail(acct.email)
-                                  : normEmail(b.assignedDriverEmail || "") === normEmail(acct.email)
-                              )
-                              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-                              .map((b) => (
-                                <div key={b.code} className="rounded-xl border p-2" style={{ borderColor: C.border }}>
-                                  <div className="flex justify-between">
-                                    <span style={{ color: C.ivory }}>
-                                      {b.date} · {VEHICLES[b.vehicle]?.name}
-                                      {accountsFilter === "drivers" && ` · ${b.name}`}
-                                    </span>
-                                    <span style={{ color: C.mutedDark }}>{statusLabel(b.status)}</span>
-                                  </div>
-                                  {accountsFilter === "customers" && (
-                                    <div style={{ color: C.mutedDark }}>
-                                      Total ${Number(b.total ?? b.fare).toFixed(0)}
-                                      {b.discountType && (
-                                        <span style={{ color: C.gold }}>
-                                          {" "}
-                                          · {b.discountType} discount −${Number(b.discountAmount || 0).toFixed(0)}
-                                        </span>
-                                      )}
-                                    </div>
-                                  )}
-                                  {accountsFilter === "drivers" && b.feedbackRating && (
-                                    <div style={{ color: C.gold }}>
-                                      {b.feedbackRating}/5{b.feedbackComment ? ` — "${b.feedbackComment}"` : ""}
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
-                            {(dashBookings || []).filter((b) =>
-                              accountsFilter === "customers"
-                                ? normEmail(b.email || "") === normEmail(acct.email)
-                                : normEmail(b.assignedDriverEmail || "") === normEmail(acct.email)
-                            ).length === 0 && <div style={{ color: C.mutedDark }}>No rides yet.</div>}
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <input
-                          value={editAccountDraft.name}
-                          onChange={(e) => setEditAccountDraft({ ...editAccountDraft, name: e.target.value })}
-                          placeholder="Name"
-                          className="w-full rounded-xl px-2 py-1.5 border"
-                          style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
-                        />
-                        <input
-                          value={editAccountDraft.phone}
-                          onChange={(e) => setEditAccountDraft({ ...editAccountDraft, phone: e.target.value })}
-                          placeholder="Phone"
-                          className="w-full rounded-xl px-2 py-1.5 border"
-                          style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
-                        />
-                        <input
-                          value={editAccountDraft.business}
-                          onChange={(e) => setEditAccountDraft({ ...editAccountDraft, business: e.target.value })}
-                          placeholder="Business (optional)"
-                          className="w-full rounded-xl px-2 py-1.5 border"
-                          style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
-                        />
-                        <select
-                          value={editAccountDraft.role}
-                          onChange={(e) => setEditAccountDraft({ ...editAccountDraft, role: e.target.value })}
-                          className="w-full rounded-xl px-2 py-1.5 border"
-                          style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
-                        >
-                          <option value="customer">Customer</option>
-                          <option value="driver">Driver</option>
-                        </select>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => saveAccountEdit(acct)}
-                            disabled={accountEditSaving}
-                            className="flex-1 py-1.5 rounded-xl disabled:opacity-40 transition-all duration-150 hover:brightness-110 active:scale-[0.97]"
-                            style={{ background: goldGradient, color: C.bg }}
-                          >
-                            {accountEditSaving ? "Saving…" : "Save"}
-                          </button>
-                          <button
-                            onClick={cancelEditAccount}
-                            className="flex-1 py-1.5 rounded-xl border"
-                            style={{ borderColor: C.border, color: C.mutedDark }}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                );
-              })}
             </div>
 
             {(!dashBookings || dashBookings.length === 0) && (
@@ -2937,6 +2582,506 @@ export default function LuxRiBooking() {
                 )}
               </div>
             ))}
+          </div>
+        )}
+
+        {mode === "availability" && (
+          <div
+            className="rounded-xl border p-6 sm:p-8 space-y-5 shadow-2xl shadow-black/50"
+            style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "'Inter', system-ui, sans-serif" }}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <div className="text-xs tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>Availability</div>
+              <button onClick={() => navigate("dashboard")} className="text-xs" style={{ color: C.mutedDark }}>
+                ← Dashboard
+              </button>
+            </div>
+            <div className="border rounded-xl p-3 space-y-2" style={{ borderColor: C.border }}>
+              <div className="text-[11px] tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
+                Availability {hoursSaving && <span style={{ color: C.gold }}>· saving…</span>}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {DAY_NAMES.map((d, i) => (
+                  <button
+                    key={d}
+                    onClick={() => toggleDay(i)}
+                    className="px-2.5 py-1.5 rounded-xl text-[11px] border"
+                    style={
+                      hours.days.includes(i)
+                        ? { borderColor: C.gold, color: C.gold, background: C.goldWash }
+                        : { borderColor: C.border, color: C.faint }
+                    }
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Field
+                  icon={<Clock size={14} />}
+                  placeholder=""
+                  value={hours.start}
+                  onChange={(v) => saveHours({ ...hours, start: v })}
+                  type="time"
+                />
+                <Field
+                  icon={<Clock size={14} />}
+                  placeholder=""
+                  value={hours.end}
+                  onChange={(v) => saveHours({ ...hours, end: v })}
+                  type="time"
+                />
+              </div>
+              <div className="flex gap-2 items-center">
+                <Field placeholder="" value={blockedDateInput} onChange={setBlockedDateInput} type="date" />
+                <button
+                  onClick={addBlockedDate}
+                  className="px-3 py-2.5 rounded-xl text-xs border shrink-0"
+                  style={{ borderColor: C.border, color: C.mutedDark }}
+                >
+                  Block Date
+                </button>
+              </div>
+              {(hours.blockedDates || []).length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {hours.blockedDates.map((d) => (
+                    <span
+                      key={d}
+                      className="text-[11px] px-2 py-1 rounded-xl border flex items-center gap-1.5"
+                      style={{ borderColor: C.border, color: C.mutedDark }}
+                    >
+                      {d}
+                      <button onClick={() => removeBlockedDate(d)} style={{ color: C.error }}>
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div className="pt-2 border-t space-y-2" style={{ borderColor: C.border }}>
+                <div className="text-[11px] tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
+                  Block a Date/Time Range
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Field placeholder="" value={blockedPeriodStartDate} onChange={setBlockedPeriodStartDate} type="date" />
+                  <Field placeholder="" value={blockedPeriodStartTime} onChange={setBlockedPeriodStartTime} type="time" />
+                </div>
+                <div className="text-[10px] uppercase tracking-wide" style={{ color: C.faint }}>to</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Field placeholder="" value={blockedPeriodEndDate} onChange={setBlockedPeriodEndDate} type="date" />
+                  <Field placeholder="" value={blockedPeriodEndTime} onChange={setBlockedPeriodEndTime} type="time" />
+                </div>
+                <button
+                  onClick={addBlockedPeriod}
+                  className="w-full py-2 rounded-xl text-xs border"
+                  style={{ borderColor: C.border, color: C.mutedDark }}
+                >
+                  Block This Range
+                </button>
+                {(hours.blockedPeriods || []).length > 0 && (
+                  <div className="space-y-1.5">
+                    {hours.blockedPeriods.map((p, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between text-[11px] px-2 py-1.5 rounded-xl border"
+                        style={{ borderColor: C.border, color: C.mutedDark }}
+                      >
+                        <span>
+                          {p.startDate} {p.startTime} → {p.endDate} {p.endTime}
+                        </span>
+                        <button onClick={() => removeBlockedPeriod(i)} style={{ color: C.error }}>
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {mode === "promotions" && (
+          <div
+            className="rounded-xl border p-6 sm:p-8 space-y-5 shadow-2xl shadow-black/50"
+            style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "'Inter', system-ui, sans-serif" }}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <div className="text-xs tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>Business Promotions</div>
+              <button onClick={() => navigate("dashboard")} className="text-xs" style={{ color: C.mutedDark }}>
+                ← Dashboard
+              </button>
+            </div>
+            <div className="border rounded-xl p-3 space-y-2" style={{ borderColor: C.border }}>
+              <div className="text-[11px] tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
+                Business Promotions {promoSaving && <span style={{ color: C.gold }}>· saving…</span>}
+              </div>
+              <div className="text-[11px]" style={{ color: C.faint }}>
+                Give customers who booked with a company name a percentage off every ride.
+              </div>
+              <div className="flex gap-2">
+                <Field placeholder="Company name" value={promoBusinessInput} onChange={setPromoBusinessInput} />
+                <div className="w-20 shrink-0">
+                  <Field placeholder="%" value={promoPctInput} onChange={setPromoPctInput} type="number" />
+                </div>
+                <button
+                  onClick={savePromo}
+                  className="px-3 py-2.5 rounded-xl text-xs border shrink-0"
+                  style={{ borderColor: C.gold, color: C.gold }}
+                >
+                  Add
+                </button>
+              </div>
+              {Object.keys(promos).length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {Object.entries(promos).map(([biz, pct]) => (
+                    <span
+                      key={biz}
+                      className="text-[11px] px-2 py-1 rounded-xl border flex items-center gap-1.5"
+                      style={{ borderColor: C.border, color: C.mutedDark }}
+                    >
+                      {biz} — {pct}%
+                      <button onClick={() => removePromo(biz)} style={{ color: C.error }}>
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {mode === "drivers" && (
+          <div
+            className="rounded-xl border p-6 sm:p-8 space-y-5 shadow-2xl shadow-black/50"
+            style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "'Inter', system-ui, sans-serif" }}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <div className="text-xs tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>Drivers</div>
+              <button onClick={() => navigate("dashboard")} className="text-xs" style={{ color: C.mutedDark }}>
+                ← Dashboard
+              </button>
+            </div>
+            <div className="border rounded-xl p-3 space-y-2" style={{ borderColor: C.border }}>
+              <div className="text-[11px] tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
+                Drivers {inviteGenBusy && <span style={{ color: C.gold }}>· generating…</span>}
+              </div>
+              {drivers.length > 0 && (
+                <div className="space-y-1.5">
+                  {drivers.map((d) => {
+                    const stats = computeDriverStats(dashBookings, d.email);
+                    return (
+                      <div key={d.email} className="text-xs" style={{ color: C.ivory }}>
+                        {d.name} <span style={{ color: C.mutedDark }}>· {d.phone}</span>
+                        <span style={{ color: C.mutedDark }}>
+                          {" "}
+                          · {stats.rideCount} ride{stats.rideCount === 1 ? "" : "s"}
+                          {stats.avgRating != null && <span style={{ color: C.gold }}> · {stats.avgRating.toFixed(1)}★</span>}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {drivers.length === 0 && <div className="text-xs" style={{ color: C.mutedDark }}>No drivers added yet.</div>}
+              <button
+                onClick={generateDriverInvite}
+                className="w-full py-2.5 rounded-xl text-xs border"
+                style={{ borderColor: C.gold, color: C.gold }}
+              >
+                Generate Driver Invite Code
+              </button>
+              {driverInvites.filter((i) => i.status === "pending").length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {driverInvites
+                    .filter((i) => i.status === "pending")
+                    .map((i) => (
+                      <span
+                        key={i.code}
+                        className="text-[11px] px-2 py-1 rounded-xl border"
+                        style={{ borderColor: C.border, color: C.gold }}
+                      >
+                        {i.code} (unused)
+                      </span>
+                    ))}
+                </div>
+              )}
+              <div className="text-[11px]" style={{ color: C.faint }}>
+                Give a driver this code — they'll enter it as a "staff code" when creating their account.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {mode === "accounts" && (
+          <div
+            className="rounded-xl border p-6 sm:p-8 space-y-5 shadow-2xl shadow-black/50"
+            style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "'Inter', system-ui, sans-serif" }}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <div className="text-xs tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>Accounts</div>
+              <button onClick={() => navigate("dashboard")} className="text-xs" style={{ color: C.mutedDark }}>
+                ← Dashboard
+              </button>
+            </div>
+            <div className="border rounded-xl p-3 space-y-3" style={{ borderColor: C.border }}>
+              <div className="flex items-center justify-between">
+                <div className="text-[11px] tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
+                  Accounts
+                </div>
+                <div className="flex gap-1.5">
+                  <button
+                    onClick={() => setAccountsFilter("customers")}
+                    className="text-[11px] px-2 py-1 rounded-xl border"
+                    style={
+                      accountsFilter === "customers"
+                        ? { borderColor: C.gold, color: C.gold }
+                        : { borderColor: C.border, color: C.mutedDark }
+                    }
+                  >
+                    Customers ({customers.length})
+                  </button>
+                  <button
+                    onClick={() => setAccountsFilter("drivers")}
+                    className="text-[11px] px-2 py-1 rounded-xl border"
+                    style={
+                      accountsFilter === "drivers"
+                        ? { borderColor: C.gold, color: C.gold }
+                        : { borderColor: C.border, color: C.mutedDark }
+                    }
+                  >
+                    Drivers ({drivers.length})
+                  </button>
+                </div>
+              </div>
+
+              {(accountsFilter === "customers" ? customers : drivers).length === 0 && (
+                <div className="text-xs" style={{ color: C.mutedDark }}>
+                  No {accountsFilter} yet.
+                </div>
+              )}
+
+              {(accountsFilter === "customers" ? customers : drivers).map((acct) => {
+                const rideCount = (dashBookings || []).filter(
+                  (b) => normEmail(b.email || "") === normEmail(acct.email) && b.status !== "cancelled"
+                ).length;
+                const isEditing = editingAccountEmail === acct.email;
+                return (
+                  <div key={acct.email} className="border rounded-xl p-3 space-y-2 text-xs" style={{ borderColor: C.border }}>
+                    {!isEditing ? (
+                      <>
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div style={{ color: C.ivory }}>{acct.name}</div>
+                            <div style={{ color: C.mutedDark }}>{acct.email}</div>
+                            <div style={{ color: C.mutedDark }}>{acct.phone}</div>
+                            {acct.business && <div style={{ color: C.mutedDark }}>Business: {acct.business}</div>}
+                            <div style={{ color: C.mutedDark }}>{rideCount} ride{rideCount === 1 ? "" : "s"}</div>
+                            {accountsFilter === "customers" && !acct.business && (
+                              <div style={{ color: C.mutedDark }}>
+                                {rideCount % LOYALTY_EVERY} of {LOYALTY_EVERY} rides toward next loyalty discount
+                              </div>
+                            )}
+                            {accountsFilter === "customers" && (acct.referralRewardsAvailable || 0) > 0 && (
+                              <div style={{ color: C.gold }}>{acct.referralRewardsAvailable} referral reward{acct.referralRewardsAvailable > 1 ? "s" : ""} unused</div>
+                            )}
+                            {accountsFilter === "customers" && acct.referredBy && (
+                              <div style={{ color: C.mutedDark }}>
+                                Referred by code {acct.referredBy} {acct.referralConsumed ? "(credited)" : "(pending first ride)"}
+                              </div>
+                            )}
+                          </div>
+                          <span
+                            className="text-[10px] uppercase tracking-wide px-2 py-1 rounded-xl border shrink-0"
+                            style={{ borderColor: C.border, color: C.mutedDark }}
+                          >
+                            {acct.role || "customer"}
+                          </span>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setExpandedAccountEmail(expandedAccountEmail === acct.email ? null : acct.email)}
+                            className="flex-1 py-1.5 rounded-xl border"
+                            style={{ borderColor: C.gold, color: C.gold }}
+                          >
+                            {expandedAccountEmail === acct.email ? "Hide Rides" : "View Rides"}
+                          </button>
+                          <button
+                            onClick={() => startEditAccount(acct)}
+                            className="flex-1 py-1.5 rounded-xl border"
+                            style={{ borderColor: C.border, color: C.mutedDark }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => resetAccountPassword(acct)}
+                            className="flex-1 py-1.5 rounded-xl border"
+                            style={{ borderColor: C.border, color: C.mutedDark }}
+                          >
+                            Reset Password
+                          </button>
+                          <button
+                            onClick={() => deleteAccount(acct)}
+                            className="flex-1 py-1.5 rounded-xl border"
+                            style={{ borderColor: C.error, color: C.error }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                        {expandedAccountEmail === acct.email && (
+                          <div className="space-y-1.5 pt-1 border-t" style={{ borderColor: C.border }}>
+                            {(dashBookings || [])
+                              .filter((b) =>
+                                accountsFilter === "customers"
+                                  ? normEmail(b.email || "") === normEmail(acct.email)
+                                  : normEmail(b.assignedDriverEmail || "") === normEmail(acct.email)
+                              )
+                              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                              .map((b) => (
+                                <div key={b.code} className="rounded-xl border p-2" style={{ borderColor: C.border }}>
+                                  <div className="flex justify-between">
+                                    <span style={{ color: C.ivory }}>
+                                      {b.date} · {VEHICLES[b.vehicle]?.name}
+                                      {accountsFilter === "drivers" && ` · ${b.name}`}
+                                    </span>
+                                    <span style={{ color: C.mutedDark }}>{statusLabel(b.status)}</span>
+                                  </div>
+                                  {accountsFilter === "customers" && (
+                                    <div style={{ color: C.mutedDark }}>
+                                      Total ${Number(b.total ?? b.fare).toFixed(0)}
+                                      {b.discountType && (
+                                        <span style={{ color: C.gold }}>
+                                          {" "}
+                                          · {b.discountType} discount −${Number(b.discountAmount || 0).toFixed(0)}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                  {accountsFilter === "drivers" && b.feedbackRating && (
+                                    <div style={{ color: C.gold }}>
+                                      {b.feedbackRating}/5{b.feedbackComment ? ` — "${b.feedbackComment}"` : ""}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            {(dashBookings || []).filter((b) =>
+                              accountsFilter === "customers"
+                                ? normEmail(b.email || "") === normEmail(acct.email)
+                                : normEmail(b.assignedDriverEmail || "") === normEmail(acct.email)
+                            ).length === 0 && <div style={{ color: C.mutedDark }}>No rides yet.</div>}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <input
+                          value={editAccountDraft.name}
+                          onChange={(e) => setEditAccountDraft({ ...editAccountDraft, name: e.target.value })}
+                          placeholder="Name"
+                          className="w-full rounded-xl px-2 py-1.5 border"
+                          style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
+                        />
+                        <input
+                          value={editAccountDraft.phone}
+                          onChange={(e) => setEditAccountDraft({ ...editAccountDraft, phone: e.target.value })}
+                          placeholder="Phone"
+                          className="w-full rounded-xl px-2 py-1.5 border"
+                          style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
+                        />
+                        <input
+                          value={editAccountDraft.business}
+                          onChange={(e) => setEditAccountDraft({ ...editAccountDraft, business: e.target.value })}
+                          placeholder="Business (optional)"
+                          className="w-full rounded-xl px-2 py-1.5 border"
+                          style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
+                        />
+                        <select
+                          value={editAccountDraft.role}
+                          onChange={(e) => setEditAccountDraft({ ...editAccountDraft, role: e.target.value })}
+                          className="w-full rounded-xl px-2 py-1.5 border"
+                          style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
+                        >
+                          <option value="customer">Customer</option>
+                          <option value="driver">Driver</option>
+                        </select>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => saveAccountEdit(acct)}
+                            disabled={accountEditSaving}
+                            className="flex-1 py-1.5 rounded-xl disabled:opacity-40 transition-all duration-150 hover:brightness-110 active:scale-[0.97]"
+                            style={{ background: goldGradient, color: C.bg }}
+                          >
+                            {accountEditSaving ? "Saving…" : "Save"}
+                          </button>
+                          <button
+                            onClick={cancelEditAccount}
+                            className="flex-1 py-1.5 rounded-xl border"
+                            style={{ borderColor: C.border, color: C.mutedDark }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {mode === "reviews" && (
+          <div
+            className="rounded-xl border p-6 sm:p-8 space-y-5 shadow-2xl shadow-black/50"
+            style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "'Inter', system-ui, sans-serif" }}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <div className="text-xs tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>Reviews & Ratings</div>
+              <button onClick={() => navigate("dashboard")} className="text-xs" style={{ color: C.mutedDark }}>
+                ← Dashboard
+              </button>
+            </div>
+
+            {ratingSummary.count > 0 ? (
+              <div className="text-center py-2">
+                <div className="text-3xl" style={{ color: C.gold, fontFamily: "'Fraunces', Georgia, serif" }}>
+                  {ratingSummary.avg.toFixed(1)}★
+                </div>
+                <div className="text-xs" style={{ color: C.mutedDark }}>
+                  from {ratingSummary.count} rated ride{ratingSummary.count === 1 ? "" : "s"}
+                </div>
+              </div>
+            ) : (
+              <div className="text-sm" style={{ color: C.mutedDark }}>No ratings yet.</div>
+            )}
+
+            <div className="space-y-2">
+              {(dashBookings || [])
+                .filter((b) => b.feedbackRating)
+                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                .map((b) => (
+                  <div key={b.code} className="border rounded-xl p-3 text-sm space-y-1" style={{ borderColor: C.border }}>
+                    <div className="flex justify-between items-start">
+                      <div style={{ color: C.ivory }}>
+                        {b.name} · {VEHICLES[b.vehicle]?.name}
+                        {b.assignedDriverName && <span style={{ color: C.mutedDark }}> · driven by {b.assignedDriverName}</span>}
+                      </div>
+                      <div style={{ color: C.gold }}>{b.feedbackRating}/5★</div>
+                    </div>
+                    <div className="text-xs" style={{ color: C.mutedDark }}>{b.date}</div>
+                    {b.feedbackComment && (
+                      <div className="text-xs" style={{ color: C.ivory }}>"{b.feedbackComment}"</div>
+                    )}
+                  </div>
+                ))}
+              {(dashBookings || []).filter((b) => b.feedbackRating).length === 0 && (
+                <div className="text-sm" style={{ color: C.mutedDark }}>
+                  Feedback from completed rides will show up here as it comes in.
+                </div>
+              )}
+            </div>
           </div>
         )}
 
