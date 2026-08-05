@@ -1302,6 +1302,23 @@ export default function LuxRiBooking() {
     }
   };
 
+  const resendConfirmation = async (b) => {
+    try {
+      // Briefly step the status down and back up so the automatic push
+      // notification (which only fires on a pending->confirmed transition)
+      // fires again, in addition to reopening the text.
+      await storage.set(`booking:${b.code}`, JSON.stringify({ ...b, status: "pending" }));
+      const reconfirmed = { ...b, status: "confirmed" };
+      await storage.set(`booking:${b.code}`, JSON.stringify(reconfirmed));
+      setDashBookings((prev) => prev.map((x) => (x.code === b.code ? reconfirmed : x)));
+      setDriverRides((prev) => prev.map((x) => (x.code === b.code ? reconfirmed : x)));
+      const msg = `Hi ${b.name.split(" ")[0]}, just confirming again — your LuxRi ride on ${b.date} at ${b.time} (${VEHICLES[b.vehicle]?.name}) is confirmed. Confirmation ${b.code}. See you soon!`;
+      window.open(smsLink(b.phone, msg), "_self");
+    } catch {
+      // no-op
+    }
+  };
+
   const findAccountByReferralCode = async (code) => {
     if (!code) return null;
     const list = await storage.list("account:");
@@ -2700,13 +2717,22 @@ export default function LuxRiBooking() {
                     </button>
                   )}
                   {b.status === "confirmed" && (
-                    <button
-                      onClick={() => completeBooking(b)}
-                      className="w-full py-2 rounded-xl text-xs tracking-wide border"
-                      style={{ borderColor: C.gold, color: C.gold }}
-                    >
-                      Mark Ride Complete
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => resendConfirmation(b)}
+                        className="flex-1 py-2 rounded-xl text-xs tracking-wide border"
+                        style={{ borderColor: C.border, color: C.mutedDark }}
+                      >
+                        Resend Confirmation
+                      </button>
+                      <button
+                        onClick={() => completeBooking(b)}
+                        className="flex-1 py-2 rounded-xl text-xs tracking-wide border"
+                        style={{ borderColor: C.gold, color: C.gold }}
+                      >
+                        Mark Ride Complete
+                      </button>
+                    </div>
                   )}
                 </div>
               ))}
@@ -2814,13 +2840,22 @@ export default function LuxRiBooking() {
                   </button>
                 )}
                 {b.status === "confirmed" && (
-                  <button
-                    onClick={() => completeBooking(b)}
-                    className="w-full py-2 rounded-xl text-xs tracking-wide border"
-                    style={{ borderColor: C.gold, color: C.gold }}
-                  >
-                    Mark Ride Complete
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => resendConfirmation(b)}
+                      className="flex-1 py-2 rounded-xl text-xs tracking-wide border"
+                      style={{ borderColor: C.border, color: C.mutedDark }}
+                    >
+                      Resend Confirmation
+                    </button>
+                    <button
+                      onClick={() => completeBooking(b)}
+                      className="flex-1 py-2 rounded-xl text-xs tracking-wide border"
+                      style={{ borderColor: C.gold, color: C.gold }}
+                    >
+                      Mark Ride Complete
+                    </button>
+                  </div>
                 )}
               </div>
             ))}
