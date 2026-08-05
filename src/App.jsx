@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Plane, MapPin, Car, ChevronRight, ChevronLeft, Check, Clock, Users, User, ArrowRight, MessageSquare, Bell, Menu, Loader2 } from "lucide-react";
+import { Plane, MapPin, Car, ChevronRight, ChevronLeft, Check, Clock, Users, User, ArrowRight, MessageSquare, Bell, Menu, Loader2, LayoutGrid, UserCog, Star } from "lucide-react";
 import { storage } from "./lib/storage";
 import { AddressField } from "./components/AddressField";
 
@@ -562,6 +562,8 @@ export default function LuxRiBooking() {
   const [editAccountDraft, setEditAccountDraft] = useState(null);
   const [accountEditSaving, setAccountEditSaving] = useState(false);
   const [accountsFilter, setAccountsFilter] = useState("customers"); // "customers" | "drivers"
+  const [accountSearch, setAccountSearch] = useState("");
+  const [reviewSearch, setReviewSearch] = useState("");
   const [expandedAccountEmail, setExpandedAccountEmail] = useState(null);
   const [driverInvites, setDriverInvites] = useState([]);
   const [inviteGenBusy, setInviteGenBusy] = useState(false);
@@ -1448,6 +1450,7 @@ export default function LuxRiBooking() {
   };
 
   const removeBlockedDate = (d) => {
+    if (!window.confirm(`Unblock ${d}? Customers will be able to book rides on this date again.`)) return;
     saveHours({ ...hours, blockedDates: (hours.blockedDates || []).filter((x) => x !== d) });
   };
 
@@ -1467,6 +1470,9 @@ export default function LuxRiBooking() {
   };
 
   const removeBlockedPeriod = (index) => {
+    const p = (hours.blockedPeriods || [])[index];
+    const label = p ? `${p.startDate} ${p.startTime} → ${p.endDate} ${p.endTime}` : "this range";
+    if (!window.confirm(`Remove the block for ${label}? Customers will be able to book during that window again.`)) return;
     saveHours({ ...hours, blockedPeriods: (hours.blockedPeriods || []).filter((_, i) => i !== index) });
   };
 
@@ -1504,6 +1510,8 @@ export default function LuxRiBooking() {
   };
 
   const removePromo = async (biz) => {
+    const pct = promos[biz];
+    if (!window.confirm(`Remove the ${pct}% rate for "${biz}"? Their future rides will go back to standard pricing.`)) return;
     const next = { ...promos };
     delete next[biz];
     try {
@@ -1832,6 +1840,60 @@ export default function LuxRiBooking() {
 
   const dashStats = computeDashStats(dashBookings);
 
+  const OPERATOR_TABS = [
+    { key: "dashboard", label: "Dashboard" },
+    { key: "availability", label: "Availability" },
+    { key: "drivers", label: "Drivers" },
+    { key: "accounts", label: "Accounts" },
+    { key: "promotions", label: "Promotions" },
+    { key: "reviews", label: "Reviews" },
+  ];
+
+  const renderOperatorTabs = (active) => (
+    <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+      {OPERATOR_TABS.map((t) => (
+        <button
+          key={t.key}
+          onClick={() => { if (t.key === "dashboard") loadDashboard(); navigate(t.key); }}
+          className="shrink-0 text-[11px] px-2.5 py-1.5 rounded-xl border whitespace-nowrap"
+          style={
+            active === t.key
+              ? { borderColor: C.gold, color: C.gold, background: C.goldWash }
+              : { borderColor: C.border, color: C.mutedDark }
+          }
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  const filteredAccounts = (() => {
+    const list = accountsFilter === "customers" ? customers : drivers;
+    const q = accountSearch.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter(
+      (a) =>
+        (a.name || "").toLowerCase().includes(q) ||
+        (a.email || "").toLowerCase().includes(q) ||
+        (a.phone || "").toLowerCase().includes(q) ||
+        (a.business || "").toLowerCase().includes(q)
+    );
+  })();
+
+  const filteredReviews = (() => {
+    const rated = (dashBookings || []).filter((b) => b.feedbackRating);
+    const q = reviewSearch.trim().toLowerCase();
+    if (!q) return rated;
+    return rated.filter(
+      (b) =>
+        (b.name || "").toLowerCase().includes(q) ||
+        (VEHICLES[b.vehicle]?.name || "").toLowerCase().includes(q) ||
+        (b.assignedDriverName || "").toLowerCase().includes(q) ||
+        (b.feedbackComment || "").toLowerCase().includes(q)
+    );
+  })();
+
   const exportBookingsCSV = () => {
     const csv = bookingsToCSV(dashBookings || []);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -1853,7 +1915,11 @@ export default function LuxRiBooking() {
         color: C.ivory,
         fontFamily: "'Fraunces', Georgia, serif",
         paddingTop: "calc(env(safe-area-inset-top, 0px) + 2.5rem)",
-        paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 2.5rem)",
+        paddingBottom:
+          account?.role === "operator" &&
+          ["dashboard", "availability", "drivers", "accounts", "promotions", "reviews"].includes(mode)
+            ? "calc(env(safe-area-inset-bottom, 0px) + 5.5rem)"
+            : "calc(env(safe-area-inset-bottom, 0px) + 2.5rem)",
       }}
     >
       <div className="w-full max-w-xl">
@@ -2144,6 +2210,7 @@ export default function LuxRiBooking() {
                 Sign Out
               </button>
             </div>
+            {renderOperatorTabs("dashboard")}
             {dashBusy && !dashBookings && (
               <div className="flex items-center justify-center gap-2 py-4 text-xs" style={{ color: C.mutedDark }}>
                 <Loader2 size={14} className="animate-spin" /> Loading your dashboard…
@@ -2598,10 +2665,8 @@ export default function LuxRiBooking() {
           >
             <div className="flex items-center justify-between mb-1">
               <div className="text-xs tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>Availability</div>
-              <button onClick={() => navigate("dashboard")} className="text-xs" style={{ color: C.mutedDark }}>
-                ← Dashboard
-              </button>
             </div>
+            {renderOperatorTabs("availability")}
             <div className="border rounded-xl p-3 space-y-2" style={{ borderColor: C.border }}>
               <div className="text-[11px] tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
                 Availability {hoursSaving && <span style={{ color: C.gold }}>· saving…</span>}
@@ -2715,10 +2780,8 @@ export default function LuxRiBooking() {
           >
             <div className="flex items-center justify-between mb-1">
               <div className="text-xs tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>Business Promotions</div>
-              <button onClick={() => navigate("dashboard")} className="text-xs" style={{ color: C.mutedDark }}>
-                ← Dashboard
-              </button>
             </div>
+            {renderOperatorTabs("promotions")}
             <div className="border rounded-xl p-3 space-y-2" style={{ borderColor: C.border }}>
               <div className="text-[11px] tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
                 Business Promotions {promoSaving && <span style={{ color: C.gold }}>· saving…</span>}
@@ -2766,10 +2829,8 @@ export default function LuxRiBooking() {
           >
             <div className="flex items-center justify-between mb-1">
               <div className="text-xs tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>Drivers</div>
-              <button onClick={() => navigate("dashboard")} className="text-xs" style={{ color: C.mutedDark }}>
-                ← Dashboard
-              </button>
             </div>
+            {renderOperatorTabs("drivers")}
             <div className="border rounded-xl p-3 space-y-2" style={{ borderColor: C.border }}>
               <div className="text-[11px] tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
                 Drivers {inviteGenBusy && <span style={{ color: C.gold }}>· generating…</span>}
@@ -2828,10 +2889,8 @@ export default function LuxRiBooking() {
           >
             <div className="flex items-center justify-between mb-1">
               <div className="text-xs tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>Accounts</div>
-              <button onClick={() => navigate("dashboard")} className="text-xs" style={{ color: C.mutedDark }}>
-                ← Dashboard
-              </button>
             </div>
+            {renderOperatorTabs("accounts")}
             <div className="border rounded-xl p-3 space-y-3" style={{ borderColor: C.border }}>
               <div className="flex items-center justify-between">
                 <div className="text-[11px] tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
@@ -2863,13 +2922,15 @@ export default function LuxRiBooking() {
                 </div>
               </div>
 
-              {(accountsFilter === "customers" ? customers : drivers).length === 0 && (
+              <Field placeholder="Search by name, email, or phone" value={accountSearch} onChange={setAccountSearch} />
+
+              {filteredAccounts.length === 0 && (
                 <div className="text-xs" style={{ color: C.mutedDark }}>
-                  No {accountsFilter} yet.
+                  {accountSearch.trim() ? `No ${accountsFilter} match "${accountSearch}."` : `No ${accountsFilter} yet.`}
                 </div>
               )}
 
-              {(accountsFilter === "customers" ? customers : drivers).map((acct) => {
+              {filteredAccounts.map((acct) => {
                 const rideCount = (dashBookings || []).filter(
                   (b) => normEmail(b.email || "") === normEmail(acct.email) && b.status !== "cancelled"
                 ).length;
@@ -3045,10 +3106,8 @@ export default function LuxRiBooking() {
           >
             <div className="flex items-center justify-between mb-1">
               <div className="text-xs tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>Reviews & Ratings</div>
-              <button onClick={() => navigate("dashboard")} className="text-xs" style={{ color: C.mutedDark }}>
-                ← Dashboard
-              </button>
             </div>
+            {renderOperatorTabs("reviews")}
 
             {ratingSummary.count > 0 ? (
               <div className="text-center py-2">
@@ -3063,9 +3122,10 @@ export default function LuxRiBooking() {
               <div className="text-sm" style={{ color: C.mutedDark }}>No ratings yet.</div>
             )}
 
+            <Field placeholder="Search by customer, vehicle, driver, or comment" value={reviewSearch} onChange={setReviewSearch} />
+
             <div className="space-y-2">
-              {(dashBookings || [])
-                .filter((b) => b.feedbackRating)
+              {filteredReviews
                 .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
                 .map((b) => (
                   <div key={b.code} className="border rounded-xl p-3 text-sm space-y-1" style={{ borderColor: C.border }}>
@@ -3082,9 +3142,11 @@ export default function LuxRiBooking() {
                     )}
                   </div>
                 ))}
-              {(dashBookings || []).filter((b) => b.feedbackRating).length === 0 && (
+              {filteredReviews.length === 0 && (
                 <div className="text-sm" style={{ color: C.mutedDark }}>
-                  Feedback from completed rides will show up here as it comes in.
+                  {reviewSearch.trim()
+                    ? `No reviews match "${reviewSearch}."`
+                    : "Feedback from completed rides will show up here as it comes in."}
                 </div>
               )}
             </div>
@@ -3943,6 +4005,49 @@ export default function LuxRiBooking() {
           </div>
         </div>
       </div>
+
+      {account?.role === "operator" &&
+        ["dashboard", "availability", "drivers", "accounts", "promotions", "reviews"].includes(mode) && (
+          <div
+            className="fixed bottom-0 left-0 right-0 flex justify-center border-t"
+            style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "'Inter', system-ui, sans-serif" }}
+          >
+            <div className="w-full max-w-xl grid grid-cols-4 text-center" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+              <button
+                onClick={() => { loadDashboard(); navigate("dashboard"); }}
+                className="py-2.5 flex flex-col items-center gap-0.5"
+                style={{ color: mode === "dashboard" ? C.gold : C.mutedDark }}
+              >
+                <LayoutGrid size={16} />
+                <span className="text-[10px]">Dashboard</span>
+              </button>
+              <button
+                onClick={() => navigate("drivers")}
+                className="py-2.5 flex flex-col items-center gap-0.5"
+                style={{ color: mode === "drivers" ? C.gold : C.mutedDark }}
+              >
+                <Car size={16} />
+                <span className="text-[10px]">Drivers</span>
+              </button>
+              <button
+                onClick={() => navigate("accounts")}
+                className="py-2.5 flex flex-col items-center gap-0.5"
+                style={{ color: mode === "accounts" ? C.gold : C.mutedDark }}
+              >
+                <UserCog size={16} />
+                <span className="text-[10px]">Accounts</span>
+              </button>
+              <button
+                onClick={() => navigate("reviews")}
+                className="py-2.5 flex flex-col items-center gap-0.5"
+                style={{ color: mode === "reviews" ? C.gold : C.mutedDark }}
+              >
+                <Star size={16} />
+                <span className="text-[10px]">Reviews</span>
+              </button>
+            </div>
+          </div>
+        )}
     </div>
   );
 }
