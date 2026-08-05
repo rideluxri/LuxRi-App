@@ -2861,9 +2861,7 @@ export default function LuxRiBooking() {
                       {b.tripType === "round" && b.returnDate ? ` · return ${b.returnDate} ${b.returnTime}` : ""}
                     </div>
                     <div className="text-xs" style={{ color: Number(b.tipAmount) > 0 ? C.gold : C.mutedDark }}>
-                      {Number(b.tipAmount) > 0
-                        ? `Fare $${Number(b.fare).toFixed(0)} + tip $${Number(b.tipAmount).toFixed(0)} = $${Number(b.total ?? b.fare).toFixed(0)}`
-                        : "No tip included"}
+                      {Number(b.tipAmount) > 0 ? `Tip earned: $${Number(b.tipAmount).toFixed(0)}` : "No tip on this ride"}
                     </div>
                     <div className="text-xs" style={{ color: C.mutedDark }}>{b.pickup} → {b.dropoff}</div>
                     <div className="text-xs">
