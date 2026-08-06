@@ -1977,38 +1977,6 @@ export default function LuxRiBooking() {
     </div>
   );
 
-  const renderRiderTabs = (active) => {
-    const tabs = account
-      ? [
-          { key: "booking", label: "Book a Ride", onClick: () => enterBookingAs(account) },
-          { key: "history", label: "My Rides", onClick: () => { loadHistoryFor(account); navigate("history"); } },
-          { key: "lookup", label: "Track a Booking", onClick: () => { setLookupError(""); setLookupBooking(null); navigate("lookup"); } },
-        ]
-      : [
-          { key: "booking", label: "Book a Ride", onClick: () => enterBookingAs(null) },
-          { key: "lookup", label: "Track a Booking", onClick: () => { setLookupError(""); setLookupBooking(null); navigate("lookup"); } },
-          { key: "signin", label: "Sign In", onClick: () => { setAuthError(""); navigate("signin"); } },
-        ];
-    return (
-      <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1 mb-4">
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            onClick={t.onClick}
-            className="shrink-0 text-[11px] px-2.5 py-1.5 rounded-xl border whitespace-nowrap"
-            style={
-              active === t.key
-                ? { borderColor: C.gold, color: C.gold, background: C.goldWash }
-                : { borderColor: C.border, color: C.mutedDark }
-            }
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-    );
-  };
-
   const filteredAccounts = (() => {
     const list = accountsFilter === "customers" ? customers : drivers;
     const q = accountSearch.trim().toLowerCase();
@@ -3379,7 +3347,6 @@ export default function LuxRiBooking() {
             style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "'Inter', system-ui, sans-serif" }}
           >
             <div className="text-xs tracking-[0.15em] uppercase mb-1" style={{ color: C.mutedDark }}>My Rides</div>
-            {renderRiderTabs("history")}
 
             {account && notifPermission !== "granted" && notifPermission !== "unsupported" && (
               <button
@@ -3549,7 +3516,6 @@ export default function LuxRiBooking() {
             style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "'Inter', system-ui, sans-serif" }}
           >
             <div className="text-xs tracking-[0.15em] uppercase mb-1" style={{ color: C.mutedDark }}>Track a Booking</div>
-            {renderRiderTabs("lookup")}
             <Field placeholder="Confirmation code (e.g. LR-AB12CD)" value={lookupCode} onChange={setLookupCode} />
             <Field placeholder="Phone number used to book" value={lookupPhone} onChange={setLookupPhone} type="tel" />
             {lookupError && <div className="text-sm" style={{ color: C.error }}>{lookupError}</div>}
@@ -3761,7 +3727,6 @@ export default function LuxRiBooking() {
 
         {mode === "booking" && (
           <>
-            {step === 0 && renderRiderTabs("booking")}
             <div className="mb-8">
               <RouteProgress step={step} onStepClick={goToStep} />
             </div>
@@ -4328,6 +4293,14 @@ export default function LuxRiBooking() {
                 <Car size={16} />
                 <span className="text-[10px]">Book a Ride</span>
               </button>
+              <button
+                onClick={() => { setLookupError(""); setLookupBooking(null); navigate("lookup"); }}
+                className="py-2.5 flex flex-col items-center gap-0.5"
+                style={{ color: mode === "lookup" ? C.gold : C.mutedDark }}
+              >
+                <MapPin size={16} />
+                <span className="text-[10px]">Track a Booking</span>
+              </button>
               {account ? (
                 <button
                   onClick={() => { loadHistoryFor(account); navigate("history"); }}
@@ -4347,14 +4320,6 @@ export default function LuxRiBooking() {
                   <span className="text-[10px]">Sign In</span>
                 </button>
               )}
-              <button
-                onClick={() => { setLookupError(""); setLookupBooking(null); navigate("lookup"); }}
-                className="py-2.5 flex flex-col items-center gap-0.5"
-                style={{ color: mode === "lookup" ? C.gold : C.mutedDark }}
-              >
-                <MapPin size={16} />
-                <span className="text-[10px]">Track a Booking</span>
-              </button>
             </div>
           </div>
         )}
