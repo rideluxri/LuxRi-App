@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Plane, MapPin, Car, ChevronRight, ChevronLeft, Check, Clock, Users, User, ArrowRight, MessageSquare, Bell, Menu, Loader2, LayoutGrid, UserCog, Star } from "lucide-react";
-import { storage } from "./lib/storage";
+import { storage, supabase } from "./lib/storage";
 import { AddressField } from "./components/AddressField";
 
 const OWNER_PHONE = "7045071718";
@@ -1421,6 +1421,31 @@ export default function LuxRiBooking() {
     }
   };
 
+  const [paymentLinkBusy, setPaymentLinkBusy] = useState(null);
+  const [paymentLinkError, setPaymentLinkError] = useState(null);
+
+  const generatePaymentLink = async (b) => {
+    setPaymentLinkBusy(b.code);
+    setPaymentLinkError(null);
+    try {
+      const amountOwed = Number(b.total ?? b.fare) || 0;
+      const { data, error } = await supabase.functions.invoke("create-payment-link", {
+        body: {
+          amount: amountOwed,
+          description: `LuxRi ride ${b.code} — ${VEHICLES[b.vehicle]?.name}`,
+          referenceId: b.code,
+        },
+      });
+      if (error || !data?.url) throw error || new Error("No link returned");
+      const msg = `Hi ${b.name.split(" ")[0]}, here's your payment link for your LuxRi ride: ${data.url}`;
+      window.open(smsLink(b.phone, msg), "_self");
+    } catch {
+      setPaymentLinkError(b.code);
+    } finally {
+      setPaymentLinkBusy(null);
+    }
+  };
+
   const findAccountByReferralCode = async (code) => {
     if (!code) return null;
     const list = await storage.list("account:");
@@ -1951,6 +1976,38 @@ export default function LuxRiBooking() {
       ))}
     </div>
   );
+
+  const renderRiderTabs = (active) => {
+    const tabs = account
+      ? [
+          { key: "booking", label: "Book a Ride", onClick: () => enterBookingAs(account) },
+          { key: "history", label: "My Rides", onClick: () => { loadHistoryFor(account); navigate("history"); } },
+          { key: "lookup", label: "Track a Booking", onClick: () => { setLookupError(""); setLookupBooking(null); navigate("lookup"); } },
+        ]
+      : [
+          { key: "booking", label: "Book a Ride", onClick: () => enterBookingAs(null) },
+          { key: "lookup", label: "Track a Booking", onClick: () => { setLookupError(""); setLookupBooking(null); navigate("lookup"); } },
+          { key: "signin", label: "Sign In", onClick: () => { setAuthError(""); navigate("signin"); } },
+        ];
+    return (
+      <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1 mb-4">
+        {tabs.map((t) => (
+          <button
+            key={t.key}
+            onClick={t.onClick}
+            className="shrink-0 text-[11px] px-2.5 py-1.5 rounded-xl border whitespace-nowrap"
+            style={
+              active === t.key
+                ? { borderColor: C.gold, color: C.gold, background: C.goldWash }
+                : { borderColor: C.border, color: C.mutedDark }
+            }
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+    );
+  };
 
   const filteredAccounts = (() => {
     const list = accountsFilter === "customers" ? customers : drivers;
@@ -2618,6 +2675,29 @@ export default function LuxRiBooking() {
                         Mark Ride Complete
                       </button>
                     </div>
+                  )}
+                  {(b.status === "confirmed" || b.status === "completed") && (
+                    <>
+                      <button
+                        onClick={() => generatePaymentLink(b)}
+                        disabled={paymentLinkBusy === b.code}
+                        className="w-full py-2 rounded-xl text-xs tracking-wide border disabled:opacity-40 flex items-center justify-center gap-1.5"
+                        style={{ borderColor: C.gold, color: C.gold }}
+                      >
+                        {paymentLinkBusy === b.code ? (
+                          <>
+                            <Loader2 size={13} className="animate-spin" /> Creating link…
+                          </>
+                        ) : (
+                          "Send Payment Link"
+                        )}
+                      </button>
+                      {paymentLinkError === b.code && (
+                        <div className="text-[11px]" style={{ color: C.error }}>
+                          Couldn't create a payment link — check Square is set up correctly.
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               ))}
@@ -3295,6 +3375,7 @@ export default function LuxRiBooking() {
             style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "'Inter', system-ui, sans-serif" }}
           >
             <div className="text-xs tracking-[0.15em] uppercase mb-1" style={{ color: C.mutedDark }}>My Rides</div>
+            {renderRiderTabs("history")}
 
             {account && notifPermission !== "granted" && notifPermission !== "unsupported" && (
               <button
@@ -3464,6 +3545,7 @@ export default function LuxRiBooking() {
             style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "'Inter', system-ui, sans-serif" }}
           >
             <div className="text-xs tracking-[0.15em] uppercase mb-1" style={{ color: C.mutedDark }}>Track a Booking</div>
+            {renderRiderTabs("lookup")}
             <Field placeholder="Confirmation code (e.g. LR-AB12CD)" value={lookupCode} onChange={setLookupCode} />
             <Field placeholder="Phone number used to book" value={lookupPhone} onChange={setLookupPhone} type="tel" />
             {lookupError && <div className="text-sm" style={{ color: C.error }}>{lookupError}</div>}
@@ -3675,6 +3757,7 @@ export default function LuxRiBooking() {
 
         {mode === "booking" && (
           <>
+            {step === 0 && renderRiderTabs("booking")}
             <div className="mb-8">
               <RouteProgress step={step} onStepClick={goToStep} />
             </div>
