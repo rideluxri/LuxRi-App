@@ -4305,6 +4305,55 @@ export default function LuxRiBooking() {
             </div>
           </div>
         )}
+
+      {(!account || (!account.role || account.role === "customer")) &&
+        ["welcome", "booking", "history", "lookup"].includes(mode) && (
+          <div
+            className="fixed bottom-0 left-0 right-0 flex justify-center border-t"
+            style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "'Inter', system-ui, sans-serif" }}
+          >
+            <div
+              className={`w-full max-w-xl grid ${account ? "grid-cols-3" : "grid-cols-3"} text-center`}
+              style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+            >
+              <button
+                onClick={() => enterBookingAs(account || null)}
+                className="py-2.5 flex flex-col items-center gap-0.5"
+                style={{ color: mode === "booking" ? C.gold : C.mutedDark }}
+              >
+                <Car size={16} />
+                <span className="text-[10px]">Book a Ride</span>
+              </button>
+              {account ? (
+                <button
+                  onClick={() => { loadHistoryFor(account); navigate("history"); }}
+                  className="py-2.5 flex flex-col items-center gap-0.5"
+                  style={{ color: mode === "history" ? C.gold : C.mutedDark }}
+                >
+                  <User size={16} />
+                  <span className="text-[10px]">My Rides</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => { setAuthError(""); navigate("signin"); }}
+                  className="py-2.5 flex flex-col items-center gap-0.5"
+                  style={{ color: C.mutedDark }}
+                >
+                  <User size={16} />
+                  <span className="text-[10px]">Sign In</span>
+                </button>
+              )}
+              <button
+                onClick={() => { setLookupError(""); setLookupBooking(null); navigate("lookup"); }}
+                className="py-2.5 flex flex-col items-center gap-0.5"
+                style={{ color: mode === "lookup" ? C.gold : C.mutedDark }}
+              >
+                <MapPin size={16} />
+                <span className="text-[10px]">Track a Booking</span>
+              </button>
+            </div>
+          </div>
+        )}
     </div>
   );
 }
