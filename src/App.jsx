@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Plane, MapPin, Car, ChevronRight, ChevronLeft, Check, Clock, Users, User, ArrowRight, MessageSquare, Bell, Menu, Loader2, LayoutGrid, UserCog, Star } from "lucide-react";
+import { Plane, MapPin, Car, ChevronRight, ChevronLeft, Check, Clock, Users, User, ArrowRight, MessageSquare, Bell, Menu, Loader2, LayoutGrid, UserCog, Star, Eye, EyeOff } from "lucide-react";
 import { storage, supabase } from "./lib/storage";
 import { AddressField } from "./components/AddressField";
 
@@ -497,6 +497,8 @@ function RouteProgress({ step, onStepClick }) {
 }
 
 function Field({ icon, placeholder, value, onChange, type = "text" }) {
+  const [showPassword, setShowPassword] = useState(false);
+  const isPassword = type === "password";
   return (
     <div
       className="flex items-center gap-2 border rounded-xl px-3 py-2.5"
@@ -504,13 +506,23 @@ function Field({ icon, placeholder, value, onChange, type = "text" }) {
     >
       {icon && <span style={{ color: C.mutedDark }}>{icon}</span>}
       <input
-        type={type}
+        type={isPassword && showPassword ? "text" : type}
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
         className="w-full bg-transparent text-sm focus:outline-none"
         style={{ color: C.ivory }}
       />
+      {isPassword && (
+        <button
+          type="button"
+          onClick={() => setShowPassword((v) => !v)}
+          style={{ color: C.mutedDark }}
+          title={showPassword ? "Hide password" : "Show password"}
+        >
+          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+        </button>
+      )}
     </div>
   );
 }
