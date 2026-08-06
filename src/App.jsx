@@ -1950,12 +1950,8 @@ export default function LuxRiBooking() {
   const liveRoute = [pickup, ...stops.map((s) => s.address).filter((a) => a.trim()), dropoff].filter(Boolean).join(" → ");
 
   const OPERATOR_TABS = [
-    { key: "dashboard", label: "Dashboard" },
     { key: "availability", label: "Availability" },
-    { key: "drivers", label: "Drivers" },
-    { key: "accounts", label: "Accounts" },
     { key: "promotions", label: "Promotions" },
-    { key: "reviews", label: "Reviews" },
   ];
 
   const renderOperatorTabs = (active) => (
