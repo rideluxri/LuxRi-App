@@ -455,7 +455,7 @@ function findNearestAvailableTime(bookings, hours, dateStr, desiredTime, exclude
 // ---- Route progress (signature element) ----------------------
 function RouteProgress({ step, onStepClick }) {
   return (
-    <div className="w-full px-1">
+    <div className="w-full px-10">
       <div className="relative h-10">
         <div className="absolute left-0 right-0 top-1/2 h-px" style={{ background: C.border }} />
         <div
@@ -2050,7 +2050,7 @@ export default function LuxRiBooking() {
 
   return (
     <div
-      className="min-h-screen w-full flex justify-center px-4"
+      className="min-h-screen w-full flex justify-center px-4 overflow-x-hidden"
       style={{
         background: C.bg,
         color: C.ivory,
@@ -2458,7 +2458,7 @@ export default function LuxRiBooking() {
                           </div>
                         ) : null;
                       })()}
-                      <div className="text-xs" style={{ color: C.mutedDark }}>{routeText(b)}</div>
+                      <div className="text-xs break-words" style={{ color: C.mutedDark }}>{routeText(b)}</div>
                       <div className="text-xs">
                         <a href={`tel:${b.phone}`} style={{ color: C.mutedDark }}>
                           {b.phone} <span style={{ color: C.gold }}>(call)</span>
@@ -2753,7 +2753,7 @@ export default function LuxRiBooking() {
                     <div className="text-xs" style={{ color: Number(b.tipAmount) > 0 ? C.gold : C.mutedDark }}>
                       {Number(b.tipAmount) > 0 ? `Tip earned: $${Number(b.tipAmount).toFixed(0)}` : "No tip on this ride"}
                     </div>
-                    <div className="text-xs" style={{ color: C.mutedDark }}>{routeText(b)}</div>
+                    <div className="text-xs break-words" style={{ color: C.mutedDark }}>{routeText(b)}</div>
                     <div className="text-xs">
                       <a href={`tel:${b.phone}`} style={{ color: C.mutedDark }}>
                         {b.phone} <span style={{ color: C.gold }}>(call)</span>
