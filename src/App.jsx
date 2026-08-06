@@ -2048,6 +2048,12 @@ export default function LuxRiBooking() {
     URL.revokeObjectURL(url);
   };
 
+  const hasBottomBar =
+    (account?.role === "operator" &&
+      ["dashboard", "availability", "drivers", "accounts", "promotions", "reviews"].includes(mode)) ||
+    ((!account || !account.role || account.role === "customer") &&
+      ["welcome", "booking", "history", "lookup"].includes(mode));
+
   return (
     <div
       className="min-h-screen w-full flex justify-center px-4 overflow-x-hidden"
@@ -2056,18 +2062,16 @@ export default function LuxRiBooking() {
         color: C.ivory,
         fontFamily: "'Fraunces', Georgia, serif",
         paddingTop: "calc(env(safe-area-inset-top, 0px) + 2.5rem)",
-        paddingBottom:
-          account?.role === "operator" &&
-          ["dashboard", "availability", "drivers", "accounts", "promotions", "reviews"].includes(mode)
-            ? "calc(env(safe-area-inset-bottom, 0px) + 5.5rem)"
-            : "calc(env(safe-area-inset-bottom, 0px) + 2.5rem)",
+        paddingBottom: hasBottomBar
+          ? "calc(env(safe-area-inset-bottom, 0px) + 7rem)"
+          : "calc(env(safe-area-inset-bottom, 0px) + 2.5rem)",
       }}
     >
       <div className="w-full max-w-xl">
         {/* Header */}
         <div className="mb-10 text-center relative">
           <div className="absolute right-0 top-0" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
-            <button onClick={() => setMenuOpen((v) => !v)} className="p-2 -m-2" style={{ color: C.mutedDark }} title="Menu">
+            <button onClick={() => setMenuOpen((v) => !v)} className="p-2" style={{ color: C.mutedDark }} title="Menu">
               <Menu size={18} />
             </button>
             {menuOpen && (
