@@ -4,6 +4,9 @@ import { storage } from "./lib/storage";
 import { AddressField } from "./components/AddressField";
 
 const OWNER_PHONE = "7045071718";
+// Matches Uber Black's real approach: no flat stop fee, just billed
+// per-minute wait time at each stop, tracked live by the driver.
+const STOP_WAIT_RATE_PER_MIN = 0.75;
 // Public half of the Web Push key pair — safe to expose client-side.
 // Set VITE_VAPID_PUBLIC_KEY in your environment (Vercel + local .env).
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
@@ -302,6 +305,12 @@ function routeText(b) {
   return parts.filter(Boolean).join(" → ");
 }
 
+function computeStopWaitFee(b) {
+  const totalMinutes = (b.stops || []).reduce((sum, s) => sum + (s.waitMinutes || 0), 0);
+  const fee = Math.round(totalMinutes * STOP_WAIT_RATE_PER_MIN * 100) / 100;
+  return { totalMinutes: Math.round(totalMinutes * 10) / 10, fee };
+}
+
 function isToday(dateStr) {
   return dateStr === new Date().toISOString().slice(0, 10);
 }
@@ -589,6 +598,7 @@ export default function LuxRiBooking() {
   const [driverInvites, setDriverInvites] = useState([]);
   const [inviteGenBusy, setInviteGenBusy] = useState(false);
   const [driverRides, setDriverRides] = useState([]);
+  const [waitTick, setWaitTick] = useState(0);
   const [driverAssignedCount, setDriverAssignedCount] = useState(0);
   const driverRideCountRef = useRef(0);
   const driverHasLoadedRef = useRef(false);
@@ -686,6 +696,7 @@ export default function LuxRiBooking() {
     return { type: null, amt: 0 };
   };
 
+  const activeStopCount = stops.filter((s) => s.address.trim()).length;
   const fare = vehicle ? estimateFare(tripType, vehicle, miles) : 0;
   const nonCancelledRides = history.filter((h) => h.status !== "cancelled").length;
   const { type: discountType, amt: discountAmount } = computeDiscountForFare(fare);
@@ -737,6 +748,14 @@ export default function LuxRiBooking() {
     const id = setInterval(checkPending, 20000);
     return () => clearInterval(id);
   }, []);
+
+  // Keeps any running stop-wait timer's displayed elapsed time live.
+  useEffect(() => {
+    const hasRunningTimer = driverRides.some((b) => (b.stops || []).some((s) => s.startedAt));
+    if (!hasRunningTimer) return;
+    const id = setInterval(() => setWaitTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, [driverRides]);
 
   // Notify a signed-in driver when the operator assigns them a new ride.
   // Restarts whenever the signed-in account changes, since it needs a fresh
@@ -1415,6 +1434,25 @@ export default function LuxRiBooking() {
     return null;
   };
 
+  const toggleStopWait = async (b, stopIndex) => {
+    try {
+      const nextStops = (b.stops || []).map((s, i) => {
+        if (i !== stopIndex) return s;
+        if (s.startedAt) {
+          const elapsedMin = (Date.now() - new Date(s.startedAt).getTime()) / 60000;
+          return { ...s, startedAt: null, waitMinutes: Math.round(((s.waitMinutes || 0) + elapsedMin) * 10) / 10 };
+        }
+        return { ...s, startedAt: new Date().toISOString() };
+      });
+      const updated = { ...b, stops: nextStops };
+      await storage.set(`booking:${b.code}`, JSON.stringify(updated));
+      setDriverRides((prev) => prev.map((x) => (x.code === b.code ? updated : x)));
+      setDashBookings((prev) => (prev ? prev.map((x) => (x.code === b.code ? updated : x)) : prev));
+    } catch {
+      // no-op
+    }
+  };
+
   const completeBooking = async (b) => {
     try {
       const updated = { ...b, status: "completed" };
@@ -1665,7 +1703,9 @@ export default function LuxRiBooking() {
       tripType,
       pickup,
       dropoff,
-      stops: stops.filter((s) => s.address.trim()).map((s) => ({ address: s.address.trim() })),
+      stops: stops
+        .filter((s) => s.address.trim())
+        .map((s) => ({ address: s.address.trim(), startedAt: null, waitMinutes: 0 })),
       flight,
       miles,
       date,
@@ -2353,6 +2393,14 @@ export default function LuxRiBooking() {
                           ? `Fare $${Number(b.fare).toFixed(0)} + tip $${Number(b.tipAmount).toFixed(0)} = $${Number(b.total ?? b.fare).toFixed(0)}`
                           : "No tip included"}
                       </div>
+                      {(b.stops || []).length > 0 && (() => {
+                        const wait = computeStopWaitFee(b);
+                        return wait.totalMinutes > 0 ? (
+                          <div className="text-xs" style={{ color: C.gold }}>
+                            Stop wait: {wait.totalMinutes} min · ${wait.fee.toFixed(2)} extra to collect
+                          </div>
+                        ) : null;
+                      })()}
                       <div className="text-xs" style={{ color: C.mutedDark }}>{routeText(b)}</div>
                       <div className="text-xs">
                         <a href={`tel:${b.phone}`} style={{ color: C.mutedDark }}>
@@ -2674,6 +2722,44 @@ export default function LuxRiBooking() {
                     >
                       {(b.stops || []).length ? "Directions: Full Route" : "Directions: Drop-off"}
                     </a>
+                  </div>
+                )}
+                {b.status === "confirmed" && (b.stops || []).length > 0 && (
+                  <div className="space-y-1.5 pt-1 border-t" style={{ borderColor: C.border }}>
+                    <div className="text-[11px] uppercase tracking-wide" style={{ color: C.mutedDark }}>
+                      Stop wait timers
+                    </div>
+                    {b.stops.map((s, i) => {
+                      const running = !!s.startedAt;
+                      const liveMinutes = running
+                        ? (s.waitMinutes || 0) + (Date.now() - new Date(s.startedAt).getTime()) / 60000
+                        : s.waitMinutes || 0;
+                      const mins = Math.floor(liveMinutes);
+                      const secs = Math.floor((liveMinutes - mins) * 60);
+                      return (
+                        <div key={i} className="flex items-center justify-between text-xs">
+                          <span style={{ color: C.mutedDark }} className="truncate pr-2">
+                            {s.address}
+                          </span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span style={{ color: running ? C.gold : C.mutedDark }}>
+                              {mins}:{String(secs).padStart(2, "0")}
+                            </span>
+                            <button
+                              onClick={() => toggleStopWait(b, i)}
+                              className="px-2 py-1 rounded-xl text-[11px] border"
+                              style={
+                                running
+                                  ? { borderColor: C.error, color: C.error }
+                                  : { borderColor: C.gold, color: C.gold }
+                              }
+                            >
+                              {running ? "Stop" : "Start"}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
                 {b.status !== "confirmed" && b.status !== "cancelled" && b.status !== "completed" && (
@@ -3886,6 +3972,12 @@ export default function LuxRiBooking() {
                   </div>
                   {tipMode === "custom" && (
                     <Field placeholder="Custom tip amount" value={customTip} onChange={setCustomTip} type="number" />
+                  )}
+                  {activeStopCount > 0 && (
+                    <div className="text-xs border rounded-xl p-2.5" style={{ borderColor: C.border, color: C.mutedDark }}>
+                      {activeStopCount} extra stop{activeStopCount > 1 ? "s" : ""} — any wait time at each stop is billed
+                      separately after the ride.
+                    </div>
                   )}
                   {discountType === "loyalty" && (
                     <div className="text-xs border rounded-xl p-2.5" style={{ borderColor: C.gold, color: C.gold }}>
