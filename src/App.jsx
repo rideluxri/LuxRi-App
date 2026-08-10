@@ -3994,6 +3994,10 @@ export default function LuxRiBooking() {
                   <div className="text-[11px]" style={{ color: C.faint }}>
                     Free to cancel or reschedule anytime up to 1 hour before pickup.
                   </div>
+                  <div className="text-xs border rounded-xl p-2.5" style={{ borderColor: C.gold, color: C.gold }}>
+                    A complimentary 15-minute wait is included at pickup. Additional wait time is billed at $
+                    {STOP_WAIT_RATE_PER_MIN.toFixed(2)}/minute.
+                  </div>
                   {tripType === "round" && (
                     <div className="space-y-2">
                       <div className="text-[11px] tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
