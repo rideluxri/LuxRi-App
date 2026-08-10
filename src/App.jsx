@@ -3053,11 +3053,11 @@ export default function LuxRiBooking() {
               <div className="text-[11px]" style={{ color: C.faint }}>
                 Give one specific customer a rate, without tying it to a business.
               </div>
-              <div className="flex gap-2">
+              <div className="space-y-2">
                 <select
                   value={personalDiscountSearch}
                   onChange={(e) => setPersonalDiscountSearch(e.target.value)}
-                  className="flex-1 rounded-xl px-2 py-2.5 text-sm border"
+                  className="w-full min-w-0 rounded-xl px-2 py-2.5 text-sm border"
                   style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
                 >
                   <option value="">Select a customer…</option>
@@ -3067,21 +3067,23 @@ export default function LuxRiBooking() {
                     </option>
                   ))}
                 </select>
-                <div className="w-20 shrink-0">
-                  <Field placeholder="%" value={personalDiscountPctInput} onChange={setPersonalDiscountPctInput} type="number" />
+                <div className="flex gap-2">
+                  <div className="flex-1 min-w-0">
+                    <Field placeholder="%" value={personalDiscountPctInput} onChange={setPersonalDiscountPctInput} type="number" />
+                  </div>
+                  <button
+                    onClick={() => {
+                      const acct = customers.find((c) => c.email === personalDiscountSearch);
+                      const pct = Number(personalDiscountPctInput);
+                      if (acct && pct > 0) setPersonalDiscount(acct, pct);
+                    }}
+                    disabled={!personalDiscountSearch || !personalDiscountPctInput}
+                    className="px-4 py-2.5 rounded-xl text-xs border shrink-0 disabled:opacity-40"
+                    style={{ borderColor: C.gold, color: C.gold }}
+                  >
+                    Set
+                  </button>
                 </div>
-                <button
-                  onClick={() => {
-                    const acct = customers.find((c) => c.email === personalDiscountSearch);
-                    const pct = Number(personalDiscountPctInput);
-                    if (acct && pct > 0) setPersonalDiscount(acct, pct);
-                  }}
-                  disabled={!personalDiscountSearch || !personalDiscountPctInput}
-                  className="px-3 py-2.5 rounded-xl text-xs border shrink-0 disabled:opacity-40"
-                  style={{ borderColor: C.gold, color: C.gold }}
-                >
-                  Set
-                </button>
               </div>
               {customers.filter((c) => (c.customDiscountPct || 0) > 0).length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
