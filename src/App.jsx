@@ -685,6 +685,9 @@ export default function LuxRiBooking() {
   const [pendingAssignedDriverName, setPendingAssignedDriverName] = useState("");
 
   const computeDiscountForFare = (fareAmount) => {
+    const pd = account?.customDiscountPct
+      ? Math.round(fareAmount * (account.customDiscountPct / 100) * 100) / 100
+      : 0;
     const ld =
       !!account && !account.business && !rescheduling && (nonCancelledRides + 1) % LOYALTY_EVERY === 0
         ? Math.round(fareAmount * 0.5 * 100) / 100
@@ -695,6 +698,7 @@ export default function LuxRiBooking() {
     const rd = hrr ? Math.round(fareAmount * (REFERRAL_PCT / 100) * 100) / 100 : 0;
     const ifr = !!account && !rescheduling && nonCancelledRides === 0;
     const fd = ifr ? Math.round(fareAmount * (FIRST_RIDE_PCT / 100) * 100) / 100 : 0;
+    if (pd > 0) return { type: "personal", amt: pd };
     if (bd > 0) return { type: "business", amt: bd };
     const candidates = [
       { type: "referral", amt: rd },
@@ -1296,6 +1300,7 @@ export default function LuxRiBooking() {
       phone: acct.phone || "",
       business: acct.business || "",
       role: acct.role || "customer",
+      customDiscountPct: acct.customDiscountPct || "",
     });
   };
 
@@ -1308,7 +1313,11 @@ export default function LuxRiBooking() {
     if (!editAccountDraft) return;
     setAccountEditSaving(true);
     try {
-      const updated = { ...acct, ...editAccountDraft };
+      const updated = {
+        ...acct,
+        ...editAccountDraft,
+        customDiscountPct: editAccountDraft.customDiscountPct ? Number(editAccountDraft.customDiscountPct) : 0,
+      };
       await storage.set(`account:${acct.email}`, JSON.stringify(updated));
       if (updated.role === "driver") {
         setDrivers((prev) => {
@@ -1365,7 +1374,9 @@ export default function LuxRiBooking() {
   const recomputeBookingPricing = (b, tripType, vehicleKey, miles) => {
     const fare = estimateFare(tripType, vehicleKey, miles);
     let discountAmount = 0;
-    if (b.discountType === "loyalty") {
+    if (b.discountType === "personal") {
+      discountAmount = Math.round(fare * ((b.personalDiscountPct || 0) / 100) * 100) / 100;
+    } else if (b.discountType === "loyalty") {
       discountAmount = Math.round(fare * 0.5 * 100) / 100;
     } else if (b.discountType === "referral") {
       discountAmount = Math.round(fare * (REFERRAL_PCT / 100) * 100) / 100;
@@ -1759,6 +1770,7 @@ export default function LuxRiBooking() {
       referredBy: account?.referredBy || "",
       discountType,
       discountAmount,
+      personalDiscountPct: discountType === "personal" ? account?.customDiscountPct || 0 : 0,
       effectiveFare,
       tipMode,
       tipPct: tipMode === "pct" ? tipPct : null,
@@ -3141,6 +3153,9 @@ export default function LuxRiBooking() {
                             <div style={{ color: C.mutedDark }}>{acct.email}</div>
                             <div style={{ color: C.mutedDark }}>{acct.phone}</div>
                             {acct.business && <div style={{ color: C.mutedDark }}>Business: {acct.business}</div>}
+                            {(acct.customDiscountPct || 0) > 0 && (
+                              <div style={{ color: C.gold }}>Personal discount: {acct.customDiscountPct}%</div>
+                            )}
                             <div style={{ color: C.mutedDark }}>{rideCount} ride{rideCount === 1 ? "" : "s"}</div>
                             {accountsFilter === "customers" && !acct.business && (
                               <div style={{ color: C.mutedDark }}>
@@ -3257,6 +3272,14 @@ export default function LuxRiBooking() {
                           value={editAccountDraft.business}
                           onChange={(e) => setEditAccountDraft({ ...editAccountDraft, business: e.target.value })}
                           placeholder="Business (optional)"
+                          className="w-full rounded-xl px-2 py-1.5 border"
+                          style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
+                        />
+                        <input
+                          value={editAccountDraft.customDiscountPct}
+                          onChange={(e) => setEditAccountDraft({ ...editAccountDraft, customDiscountPct: e.target.value })}
+                          placeholder="Personal discount % (optional)"
+                          type="number"
                           className="w-full rounded-xl px-2 py-1.5 border"
                           style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
                         />
@@ -4039,6 +4062,11 @@ export default function LuxRiBooking() {
                       separately after the ride.
                     </div>
                   )}
+                  {discountType === "personal" && (
+                    <div className="text-xs border rounded-xl p-2.5" style={{ borderColor: C.gold, color: C.gold }}>
+                      Your personal rate applied — {account?.customDiscountPct}% off the fare.
+                    </div>
+                  )}
                   {discountType === "loyalty" && (
                     <div className="text-xs border rounded-xl p-2.5" style={{ borderColor: C.gold, color: C.gold }}>
                       Loyalty reward — this is your {LOYALTY_EVERY}th ride, 50% off the fare!
@@ -4064,7 +4092,9 @@ export default function LuxRiBooking() {
                       Fare ${fare.toFixed(0)}
                       {discountType &&
                         ` − $${discountAmount.toFixed(0)} ${
-                          { loyalty: "loyalty", business: "business rate", referral: "referral", firstRide: "welcome" }[discountType]
+                          { personal: "personal rate", loyalty: "loyalty", business: "business rate", referral: "referral", firstRide: "welcome" }[
+                            discountType
+                          ]
                         }`}{" "}
                       + tip ${tipAmount.toFixed(0)}
                     </span>
