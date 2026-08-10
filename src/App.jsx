@@ -670,6 +670,9 @@ export default function LuxRiBooking() {
   const [promoBusinessInput, setPromoBusinessInput] = useState("");
   const [promoPctInput, setPromoPctInput] = useState("");
   const [promoSaving, setPromoSaving] = useState(false);
+  const [personalDiscountSearch, setPersonalDiscountSearch] = useState("");
+  const [personalDiscountPctInput, setPersonalDiscountPctInput] = useState("");
+  const [personalDiscountSaving, setPersonalDiscountSaving] = useState(false);
   const [passengers, setPassengers] = useState("");
   const [luggage, setLuggage] = useState("");
   const [tipPct, setTipPct] = useState(15);
@@ -1307,6 +1310,21 @@ export default function LuxRiBooking() {
   const cancelEditAccount = () => {
     setEditingAccountEmail(null);
     setEditAccountDraft(null);
+  };
+
+  const setPersonalDiscount = async (acct, pct) => {
+    setPersonalDiscountSaving(true);
+    try {
+      const updated = { ...acct, customDiscountPct: pct };
+      await storage.set(`account:${acct.email}`, JSON.stringify(updated));
+      setCustomers((prev) => prev.map((c) => (c.email === acct.email ? updated : c)));
+      setPersonalDiscountSearch("");
+      setPersonalDiscountPctInput("");
+    } catch {
+      // no-op
+    } finally {
+      setPersonalDiscountSaving(false);
+    }
   };
 
   const saveAccountEdit = async (acct) => {
@@ -3024,6 +3042,63 @@ export default function LuxRiBooking() {
                       </button>
                     </span>
                   ))}
+                </div>
+              )}
+            </div>
+
+            <div className="border rounded-xl p-3 space-y-2" style={{ borderColor: C.border }}>
+              <div className="text-[11px] tracking-[0.15em] uppercase" style={{ color: C.mutedDark }}>
+                Personal Discounts {personalDiscountSaving && <span style={{ color: C.gold }}>· saving…</span>}
+              </div>
+              <div className="text-[11px]" style={{ color: C.faint }}>
+                Give one specific customer a rate, without tying it to a business.
+              </div>
+              <div className="flex gap-2">
+                <select
+                  value={personalDiscountSearch}
+                  onChange={(e) => setPersonalDiscountSearch(e.target.value)}
+                  className="flex-1 rounded-xl px-2 py-2.5 text-sm border"
+                  style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
+                >
+                  <option value="">Select a customer…</option>
+                  {customers.map((c) => (
+                    <option key={c.email} value={c.email}>
+                      {c.name} ({c.email})
+                    </option>
+                  ))}
+                </select>
+                <div className="w-20 shrink-0">
+                  <Field placeholder="%" value={personalDiscountPctInput} onChange={setPersonalDiscountPctInput} type="number" />
+                </div>
+                <button
+                  onClick={() => {
+                    const acct = customers.find((c) => c.email === personalDiscountSearch);
+                    const pct = Number(personalDiscountPctInput);
+                    if (acct && pct > 0) setPersonalDiscount(acct, pct);
+                  }}
+                  disabled={!personalDiscountSearch || !personalDiscountPctInput}
+                  className="px-3 py-2.5 rounded-xl text-xs border shrink-0 disabled:opacity-40"
+                  style={{ borderColor: C.gold, color: C.gold }}
+                >
+                  Set
+                </button>
+              </div>
+              {customers.filter((c) => (c.customDiscountPct || 0) > 0).length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {customers
+                    .filter((c) => (c.customDiscountPct || 0) > 0)
+                    .map((c) => (
+                      <span
+                        key={c.email}
+                        className="text-[11px] px-2 py-1 rounded-xl border flex items-center gap-1.5"
+                        style={{ borderColor: C.border, color: C.mutedDark }}
+                      >
+                        {c.name} — {c.customDiscountPct}%
+                        <button onClick={() => setPersonalDiscount(c, 0)} style={{ color: C.error }}>
+                          ×
+                        </button>
+                      </span>
+                    ))}
                 </div>
               )}
             </div>
