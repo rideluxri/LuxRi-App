@@ -2511,10 +2511,23 @@ export default function LuxRiBooking() {
                         {b.date} · {b.time} · {b.tripType} · ${Number(b.total ?? b.fare).toFixed(0)}
                         {b.tripType === "round" && b.returnDate ? ` · return ${b.returnDate} ${b.returnTime}` : ""}
                       </div>
-                      <div className="text-xs" style={{ color: Number(b.tipAmount) > 0 ? C.gold : C.mutedDark }}>
-                        {Number(b.tipAmount) > 0
-                          ? `Fare $${Number(b.fare).toFixed(0)} + tip $${Number(b.tipAmount).toFixed(0)} = $${Number(b.total ?? b.fare).toFixed(0)}`
-                          : "No tip included"}
+                      <div className="text-xs" style={{ color: Number(b.tipAmount) > 0 || Number(b.discountAmount) > 0 ? C.gold : C.mutedDark }}>
+                        {(() => {
+                          const rawFare = Number(b.fare) || 0;
+                          const tip = Number(b.tipAmount) || 0;
+                          // Trust what was actually stored — both the booking flow and the
+                          // Edit form always compute and save these together, so they're
+                          // guaranteed to already match the total.
+                          const effFare = b.effectiveFare != null ? Number(b.effectiveFare) : rawFare;
+                          const total = Number(b.total ?? effFare + tip);
+                          const discounted = Number(b.discountAmount) > 0;
+                          const fareText = discounted
+                            ? `Fare $${rawFare.toFixed(0)} → $${effFare.toFixed(0)} (${b.discountType || "discount"})`
+                            : `Fare $${effFare.toFixed(0)}`;
+                          return tip > 0
+                            ? `${fareText} + tip $${tip.toFixed(0)} = $${total.toFixed(0)}`
+                            : `${fareText} — no tip included`;
+                        })()}
                       </div>
                       {(b.stops || []).length > 0 && (() => {
                         const wait = computeStopWaitFee(b);
