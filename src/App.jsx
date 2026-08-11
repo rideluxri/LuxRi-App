@@ -2072,7 +2072,7 @@ export default function LuxRiBooking() {
 
   const hasBottomBar =
     (account?.role === "operator" &&
-      ["dashboard", "availability", "drivers", "accounts", "promotions", "reviews"].includes(mode)) ||
+      ["dashboard", "bookings", "availability", "drivers", "accounts", "promotions", "reviews"].includes(mode)) ||
     ((!account || !account.role || account.role === "customer") &&
       ["welcome", "booking", "history", "lookup"].includes(mode));
 
@@ -4409,7 +4409,7 @@ export default function LuxRiBooking() {
       </div>
 
       {account?.role === "operator" &&
-        ["dashboard", "availability", "drivers", "accounts", "promotions", "reviews"].includes(mode) && (
+        ["dashboard", "bookings", "availability", "drivers", "accounts", "promotions", "reviews"].includes(mode) && (
           <div
             className="fixed bottom-0 left-0 right-0 flex justify-center border-t"
             style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "'Inter', system-ui, sans-serif" }}
