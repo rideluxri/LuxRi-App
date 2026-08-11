@@ -2536,7 +2536,16 @@ export default function LuxRiBooking() {
                         </div>
                       )}
                       {b.flight && (
-                        <div className="text-xs" style={{ color: C.gold }}>Flight: {b.flight}</div>
+                        <div className="text-xs">
+                        <a
+                          href={`https://www.flightaware.com/live/flight/${b.flight.replace(/\s+/g, "")}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: C.gold }}
+                        >
+                          Flight: {b.flight} (track)
+                        </a>
+                      </div>
                       )}
                       {b.feedbackRating && (
                         <div className="text-xs" style={{ color: C.gold }}>Rated {b.feedbackRating}/5{b.feedbackComment ? ` — "${b.feedbackComment}"` : ""}</div>
@@ -2835,7 +2844,16 @@ export default function LuxRiBooking() {
                       </div>
                     )}
                     {b.flight && (
-                      <div className="text-xs" style={{ color: C.gold }}>Flight: {b.flight}</div>
+                      <div className="text-xs">
+                        <a
+                          href={`https://www.flightaware.com/live/flight/${b.flight.replace(/\s+/g, "")}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: C.gold }}
+                        >
+                          Flight: {b.flight} (track)
+                        </a>
+                      </div>
                     )}
                   </div>
                   <span
