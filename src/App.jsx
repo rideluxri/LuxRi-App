@@ -1521,6 +1521,17 @@ export default function LuxRiBooking() {
     }
   };
 
+  const undoComplete = async (b) => {
+    try {
+      const updated = { ...b, status: "confirmed" };
+      await storage.set(`booking:${b.code}`, JSON.stringify(updated));
+      setDashBookings((prev) => prev.map((x) => (x.code === b.code ? updated : x)));
+      setDriverRides((prev) => prev.map((x) => (x.code === b.code ? updated : x)));
+    } catch {
+      // no-op
+    }
+  };
+
   const completeBooking = async (b) => {
     try {
       const updated = { ...b, status: "completed" };
@@ -2767,6 +2778,15 @@ export default function LuxRiBooking() {
                       </button>
                     </div>
                   )}
+                  {b.status === "completed" && (
+                    <button
+                      onClick={() => undoComplete(b)}
+                      className="w-full py-2 rounded-xl text-xs tracking-wide border"
+                      style={{ borderColor: C.border, color: C.mutedDark }}
+                    >
+                      Undo — Mark as Confirmed
+                    </button>
+                  )}
                   {(b.status === "confirmed" || b.status === "completed") && (
                     <>
                       <button
@@ -2972,6 +2992,15 @@ export default function LuxRiBooking() {
                       Mark Ride Complete
                     </button>
                   </div>
+                )}
+                {b.status === "completed" && (
+                  <button
+                    onClick={() => undoComplete(b)}
+                    className="w-full py-2 rounded-xl text-xs tracking-wide border"
+                    style={{ borderColor: C.border, color: C.mutedDark }}
+                  >
+                    Undo — Mark as Confirmed
+                  </button>
                 )}
               </div>
             ))}
