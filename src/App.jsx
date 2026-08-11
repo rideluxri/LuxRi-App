@@ -23,6 +23,7 @@ const MODE_PATHS = {
   install: "/get-the-app",
   availability: "/dashboard/availability",
   promotions: "/dashboard/promotions",
+  bookings: "/dashboard/bookings",
   drivers: "/dashboard/drivers",
   accounts: "/dashboard/accounts",
   reviews: "/dashboard/reviews",
@@ -604,6 +605,7 @@ export default function LuxRiBooking() {
   const [editAccountDraft, setEditAccountDraft] = useState(null);
   const [accountEditSaving, setAccountEditSaving] = useState(false);
   const [accountsFilter, setAccountsFilter] = useState("customers"); // "customers" | "drivers"
+  const [bookingsFilter, setBookingsFilter] = useState("active"); // "active" | "completed" | "cancelled"
   const [accountSearch, setAccountSearch] = useState("");
   const [reviewSearch, setReviewSearch] = useState("");
   const [expandedAccountEmail, setExpandedAccountEmail] = useState(null);
@@ -1989,9 +1991,15 @@ export default function LuxRiBooking() {
   };
 
   const dashStats = computeDashStats(dashBookings);
+  const filteredBookings = (dashBookings || []).filter((b) => {
+    if (bookingsFilter === "completed") return b.status === "completed";
+    if (bookingsFilter === "cancelled") return b.status === "cancelled";
+    return b.status !== "completed" && b.status !== "cancelled"; // active: pending or confirmed
+  });
   const liveRoute = [pickup, ...stops.map((s) => s.address).filter((a) => a.trim()), dropoff].filter(Boolean).join(" → ");
 
   const OPERATOR_TABS = [
+    { key: "bookings", label: "Bookings" },
     { key: "availability", label: "Availability" },
     { key: "promotions", label: "Promotions" },
   ];
@@ -2002,7 +2010,7 @@ export default function LuxRiBooking() {
         <button
           key={t.key}
           onClick={() => { if (t.key === "dashboard") loadDashboard(); navigate(t.key); }}
-          className="shrink-0 text-[11px] px-2.5 py-1.5 rounded-xl border whitespace-nowrap"
+          className="shrink-0 relative text-[11px] px-2.5 py-1.5 rounded-xl border whitespace-nowrap"
           style={
             active === t.key
               ? { borderColor: C.gold, color: C.gold, background: C.goldWash }
@@ -2010,6 +2018,14 @@ export default function LuxRiBooking() {
           }
         >
           {t.label}
+          {t.key === "bookings" && pendingCount > 0 && active !== "bookings" && (
+            <span
+              className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full text-[9px] flex items-center justify-center"
+              style={{ background: C.error, color: C.ivory }}
+            >
+              !
+            </span>
+          )}
         </button>
       ))}
     </div>
@@ -2426,12 +2442,52 @@ export default function LuxRiBooking() {
                 Export Bookings to CSV
               </button>
             </div>
+          </div>
+        )}
 
-            {(!dashBookings || dashBookings.length === 0) && (
-              <div className="text-sm" style={{ color: C.mutedDark }}>No bookings yet — they'll show up here the moment someone books a ride.</div>
+        {mode === "bookings" && (
+          <div
+            className="rounded-xl border p-6 sm:p-8 space-y-5 shadow-2xl shadow-black/50"
+            style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "'Inter', system-ui, sans-serif" }}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <div className="text-xs tracking-[0.15em] uppercase flex items-center gap-2" style={{ color: C.mutedDark }}>
+                Bookings {pendingCount > 0 && <span style={{ color: C.gold }}>({pendingCount} pending)</span>}
+              </div>
+              <button onClick={handleSignOut} className="text-xs" style={{ color: C.mutedDark }}>
+                Sign Out
+              </button>
+            </div>
+            {renderOperatorTabs("bookings")}
+            {dashBusy && !dashBookings && (
+              <div className="flex items-center justify-center gap-2 py-4 text-xs" style={{ color: C.mutedDark }}>
+                <Loader2 size={14} className="animate-spin" /> Loading your bookings…
+              </div>
             )}
-            {dashBookings &&
-              dashBookings.map((b) => (
+            <div className="flex gap-1.5">
+              {[
+                { key: "active", label: "Active" },
+                { key: "completed", label: "Completed" },
+                { key: "cancelled", label: "Cancelled" },
+              ].map((f) => (
+                <button
+                  key={f.key}
+                  onClick={() => setBookingsFilter(f.key)}
+                  className="flex-1 py-2 text-xs rounded-xl border"
+                  style={
+                    bookingsFilter === f.key
+                      ? { borderColor: C.gold, color: C.gold, background: C.goldWash }
+                      : { borderColor: C.border, color: C.mutedDark }
+                  }
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+            {filteredBookings.length === 0 && (
+              <div className="text-sm" style={{ color: C.mutedDark }}>No {bookingsFilter} bookings.</div>
+            )}
+            {filteredBookings.map((b) => (
                 <div
                   key={b.code}
                   className="border rounded-xl p-3 text-sm space-y-2"
@@ -2711,6 +2767,7 @@ export default function LuxRiBooking() {
                   )}
                 </div>
               ))}
+
           </div>
         )}
 
