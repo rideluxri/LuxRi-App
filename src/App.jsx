@@ -2535,6 +2535,9 @@ export default function LuxRiBooking() {
                           {b.passengers && `${b.passengers} pax`}{b.passengers && b.luggage ? " · " : ""}{b.luggage && `${b.luggage} bags`}
                         </div>
                       )}
+                      {b.flight && (
+                        <div className="text-xs" style={{ color: C.gold }}>Flight: {b.flight}</div>
+                      )}
                       {b.feedbackRating && (
                         <div className="text-xs" style={{ color: C.gold }}>Rated {b.feedbackRating}/5{b.feedbackComment ? ` — "${b.feedbackComment}"` : ""}</div>
                       )}
@@ -2830,6 +2833,9 @@ export default function LuxRiBooking() {
                       <div className="text-xs" style={{ color: C.mutedDark }}>
                         {b.passengers && `${b.passengers} pax`}{b.passengers && b.luggage ? " · " : ""}{b.luggage && `${b.luggage} bags`}
                       </div>
+                    )}
+                    {b.flight && (
+                      <div className="text-xs" style={{ color: C.gold }}>Flight: {b.flight}</div>
                     )}
                   </div>
                   <span
