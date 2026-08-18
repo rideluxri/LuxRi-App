@@ -1551,10 +1551,14 @@ export default function LuxRiBooking() {
           referenceId: b.code,
         },
       });
-      if (error || !data?.url) throw error || new Error("No link returned");
+      if (error || !data?.url) {
+        console.error("Payment link generation failed:", error, data);
+        throw error || new Error("No link returned");
+      }
       const msg = `Hi ${b.name.split(" ")[0]}, here's your payment link for your LuxRi ride: ${data.url}`;
       window.open(smsLink(b.phone, msg), "_self");
-    } catch {
+    } catch (err) {
+      console.error("Payment link error:", err);
       setPaymentLinkError(b.code);
     } finally {
       setPaymentLinkBusy(null);
