@@ -4111,8 +4111,18 @@ export default function LuxRiBooking() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-                    <Field icon={<Clock size={16} />} placeholder="" value={date} onChange={(v) => { setDate(v); setSlotError(""); setSuggestedTime(null); }} type="date" />
-                    <Field icon={<Clock size={16} />} placeholder="" value={time} onChange={(v) => { setTime(v); setSlotError(""); setSuggestedTime(null); }} type="time" />
+                    <div className="space-y-1">
+                      <div className="text-[10px] uppercase tracking-wide" style={{ color: C.mutedDark }}>
+                        Pickup Date
+                      </div>
+                      <Field icon={<Clock size={16} />} placeholder="" value={date} onChange={(v) => { setDate(v); setSlotError(""); setSuggestedTime(null); }} type="date" />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="text-[10px] uppercase tracking-wide" style={{ color: C.mutedDark }}>
+                        Pickup Time
+                      </div>
+                      <Field icon={<Clock size={16} />} placeholder="" value={time} onChange={(v) => { setTime(v); setSlotError(""); setSuggestedTime(null); }} type="time" />
+                    </div>
                   </div>
                   <div className="text-[11px]" style={{ color: C.faint }}>
                     Free to cancel or reschedule anytime up to 1 hour before pickup.
@@ -4127,8 +4137,18 @@ export default function LuxRiBooking() {
                         Return Pickup
                       </div>
                       <div className="grid grid-cols-2 gap-3">
-                        <Field icon={<Clock size={16} />} placeholder="" value={returnDate} onChange={(v) => { setReturnDate(v); setSlotError(""); setSuggestedTime(null); }} type="date" />
-                        <Field icon={<Clock size={16} />} placeholder="" value={returnTime} onChange={(v) => { setReturnTime(v); setSlotError(""); setSuggestedTime(null); }} type="time" />
+                        <div className="space-y-1">
+                          <div className="text-[10px] uppercase tracking-wide" style={{ color: C.mutedDark }}>
+                            Return Date
+                          </div>
+                          <Field icon={<Clock size={16} />} placeholder="" value={returnDate} onChange={(v) => { setReturnDate(v); setSlotError(""); setSuggestedTime(null); }} type="date" />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-[10px] uppercase tracking-wide" style={{ color: C.mutedDark }}>
+                            Return Time
+                          </div>
+                          <Field icon={<Clock size={16} />} placeholder="" value={returnTime} onChange={(v) => { setReturnTime(v); setSlotError(""); setSuggestedTime(null); }} type="time" />
+                        </div>
                       </div>
                     </div>
                   )}
