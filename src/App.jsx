@@ -321,6 +321,17 @@ function isToday(dateStr) {
   return dateStr === new Date().toISOString().slice(0, 10);
 }
 
+function tripTypeLabel(tripType) {
+  switch (tripType) {
+    case "round":
+      return "Round Trip";
+    case "airport":
+      return "Airport";
+    default:
+      return "One-Way";
+  }
+}
+
 function statusLabel(status) {
   switch (status) {
     case "confirmed":
@@ -1554,7 +1565,7 @@ export default function LuxRiBooking() {
       const { data, error } = await supabase.functions.invoke("create-payment-link", {
         body: {
           amount: amountOwed,
-          description: `LuxRi ride ${b.code} — ${VEHICLES[b.vehicle]?.name}`,
+          description: `LuxRi ${tripTypeLabel(b.tripType)} Ride ${b.code} — ${VEHICLES[b.vehicle]?.name}`,
           referenceId: b.code,
         },
       });
@@ -2688,7 +2699,7 @@ export default function LuxRiBooking() {
                             Today
                           </span>
                         )}
-                        {b.date} · {b.time} · {b.tripType} · ${Number(b.total ?? b.fare).toFixed(0)}
+                        {b.date} · {b.time} · {tripTypeLabel(b.tripType)} · ${Number(b.total ?? b.fare).toFixed(0)}
                         {b.tripType === "round" && b.returnDate ? ` · return ${b.returnDate} ${b.returnTime}` : ""}
                       </div>
                       <div className="text-xs" style={{ color: Number(b.tipAmount) > 0 || Number(b.discountAmount) > 0 ? C.gold : C.mutedDark }}>
@@ -3060,7 +3071,7 @@ export default function LuxRiBooking() {
                           Today
                         </span>
                       )}
-                      {b.date} · {b.time} · {b.tripType}
+                      {b.date} · {b.time} · {tripTypeLabel(b.tripType)}
                       {b.tripType === "round" && b.returnDate ? ` · return ${b.returnDate} ${b.returnTime}` : ""}
                     </div>
                     <div className="text-xs" style={{ color: Number(b.tipAmount) > 0 ? C.gold : C.mutedDark }}>
