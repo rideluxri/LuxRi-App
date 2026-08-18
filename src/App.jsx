@@ -7,6 +7,10 @@ const OWNER_PHONE = "7045071718";
 // Matches Uber Black's real approach: no flat stop fee, just billed
 // per-minute wait time at each stop, tracked live by the driver.
 const STOP_WAIT_RATE_PER_MIN = 0.75;
+// Complimentary wait at pickup before billing kicks in — airport pickups
+// get a longer grace period since flights and baggage claim add delay.
+const FREE_WAIT_MINUTES_STANDARD = 10;
+const FREE_WAIT_MINUTES_AIRPORT = 15;
 // Public half of the Web Push key pair — safe to expose client-side.
 // Set VITE_VAPID_PUBLIC_KEY in your environment (Vercel + local .env).
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
@@ -4128,7 +4132,8 @@ export default function LuxRiBooking() {
                     Free to cancel or reschedule anytime up to 1 hour before pickup.
                   </div>
                   <div className="text-xs border rounded-xl p-2.5" style={{ borderColor: C.gold, color: C.gold }}>
-                    A complimentary 15-minute wait is included at pickup. Additional wait time is billed at $
+                    A complimentary {tripType === "airport" ? FREE_WAIT_MINUTES_AIRPORT : FREE_WAIT_MINUTES_STANDARD}-minute
+                    wait is included at pickup. Additional wait time is billed at $
                     {STOP_WAIT_RATE_PER_MIN.toFixed(2)}/minute.
                   </div>
                   {tripType === "round" && (
