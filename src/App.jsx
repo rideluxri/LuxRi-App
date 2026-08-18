@@ -1879,7 +1879,9 @@ export default function LuxRiBooking() {
     } catch {
       // if the re-check fails, proceed — storage.set below is still the source of truth
     }
-    const code = rescheduling ? confirmCode : "LR-" + Math.random().toString(36).slice(2, 8).toUpperCase();
+    const datePart = date ? date.replace(/-/g, "") : "";
+    const randomPart = Math.random().toString(36).slice(2, 6).toUpperCase();
+    const code = rescheduling ? confirmCode : `LR-${datePart}-${randomPart}`;
     const booking = {
       code,
       status: rescheduling ? "pending" : "pending",
