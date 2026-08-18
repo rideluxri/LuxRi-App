@@ -4082,7 +4082,7 @@ export default function LuxRiBooking() {
                       )}
                     </div>
                     {tripType === "airport" && (
-                      <Field icon={<Plane size={16} />} placeholder="Flight number" value={flight} onChange={setFlight} />
+                      <Field icon={<Plane size={16} />} placeholder="Flight number (e.g. AA1234)" value={flight} onChange={setFlight} />
                     )}
                     <div className="space-y-1">
                       <div
