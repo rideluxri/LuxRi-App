@@ -1361,6 +1361,7 @@ export default function LuxRiBooking() {
       passengers: b.passengers || "",
       luggage: b.luggage || "",
       phone: b.phone || "",
+      flight: b.flight || "",
       notes: b.notes || "",
     });
   };
@@ -2882,6 +2883,15 @@ export default function LuxRiBooking() {
                         className="w-full rounded-xl px-2 py-1.5 text-xs border"
                         style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
                       />
+                      {editDraft.tripType === "airport" && (
+                        <input
+                          value={editDraft.flight}
+                          onChange={(e) => setEditDraft({ ...editDraft, flight: e.target.value })}
+                          placeholder="Flight number (e.g. AA1234)"
+                          className="w-full rounded-xl px-2 py-1.5 text-xs border"
+                          style={{ background: C.inputBg, borderColor: C.border, color: C.ivory }}
+                        />
+                      )}
                       <textarea
                         value={editDraft.notes}
                         onChange={(e) => setEditDraft({ ...editDraft, notes: e.target.value })}
