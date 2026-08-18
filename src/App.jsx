@@ -1540,6 +1540,12 @@ export default function LuxRiBooking() {
   const [paymentLinkError, setPaymentLinkError] = useState(null);
 
   const generatePaymentLink = async (b) => {
+    if (b.paid) {
+      const ok = window.confirm(
+        `This ride is already marked as paid. Send another payment link anyway?`
+      );
+      if (!ok) return;
+    }
     setPaymentLinkBusy(b.code);
     setPaymentLinkError(null);
     try {
@@ -1562,6 +1568,16 @@ export default function LuxRiBooking() {
       setPaymentLinkError(b.code);
     } finally {
       setPaymentLinkBusy(null);
+    }
+  };
+
+  const togglePaid = async (b) => {
+    try {
+      const updated = { ...b, paid: !b.paid };
+      await storage.set(`booking:${b.code}`, JSON.stringify(updated));
+      setDashBookings((prev) => prev.map((x) => (x.code === b.code ? updated : x)));
+    } catch {
+      // no-op
     }
   };
 
@@ -2732,16 +2748,26 @@ export default function LuxRiBooking() {
                         </div>
                       )}
                     </div>
-                    <span
-                      className="text-[10px] uppercase tracking-wide px-2 py-1 rounded-xl shrink-0 border"
-                      style={
-                        b.status === "confirmed" || b.status === "completed"
-                          ? { background: "#2A2311", color: C.gold, borderColor: C.gold }
-                          : { background: "transparent", color: C.mutedDark, borderColor: C.border }
-                      }
-                    >
-                      {statusLabel(b.status)}
-                    </span>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <span
+                        className="text-[10px] uppercase tracking-wide px-2 py-1 rounded-xl border"
+                        style={
+                          b.status === "confirmed" || b.status === "completed"
+                            ? { background: "#2A2311", color: C.gold, borderColor: C.gold }
+                            : { background: "transparent", color: C.mutedDark, borderColor: C.border }
+                        }
+                      >
+                        {statusLabel(b.status)}
+                      </span>
+                      {b.paid && (
+                        <span
+                          className="text-[10px] uppercase tracking-wide px-2 py-1 rounded-xl border"
+                          style={{ background: "#12321a", color: "#5fb86b", borderColor: "#3a7d44" }}
+                        >
+                          Paid
+                        </span>
+                      )}
+                    </div>
                   </div>
                   {drivers.length > 0 && b.status !== "cancelled" && (
                     <div className="flex items-center gap-2">
@@ -2941,20 +2967,33 @@ export default function LuxRiBooking() {
                   )}
                   {(b.status === "confirmed" || b.status === "completed") && (
                     <>
-                      <button
-                        onClick={() => generatePaymentLink(b)}
-                        disabled={paymentLinkBusy === b.code}
-                        className="w-full py-2 rounded-xl text-xs tracking-wide border disabled:opacity-40 flex items-center justify-center gap-1.5"
-                        style={{ borderColor: C.gold, color: C.gold }}
-                      >
-                        {paymentLinkBusy === b.code ? (
-                          <>
-                            <Loader2 size={13} className="animate-spin" /> Creating link…
-                          </>
-                        ) : (
-                          "Send Payment Link"
-                        )}
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => generatePaymentLink(b)}
+                          disabled={paymentLinkBusy === b.code}
+                          className="flex-1 py-2 rounded-xl text-xs tracking-wide border disabled:opacity-40 flex items-center justify-center gap-1.5"
+                          style={{ borderColor: C.gold, color: C.gold }}
+                        >
+                          {paymentLinkBusy === b.code ? (
+                            <>
+                              <Loader2 size={13} className="animate-spin" /> Creating link…
+                            </>
+                          ) : (
+                            "Send Payment Link"
+                          )}
+                        </button>
+                        <button
+                          onClick={() => togglePaid(b)}
+                          className="flex-1 py-2 rounded-xl text-xs tracking-wide border"
+                          style={
+                            b.paid
+                              ? { borderColor: C.border, color: C.mutedDark }
+                              : { borderColor: "#3a7d44", color: "#5fb86b" }
+                          }
+                        >
+                          {b.paid ? "Mark as Unpaid" : "Mark as Paid"}
+                        </button>
+                      </div>
                       {paymentLinkError === b.code && (
                         <div className="text-[11px]" style={{ color: C.error }}>
                           Couldn't create a payment link — check Square is set up correctly.
