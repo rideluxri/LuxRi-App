@@ -18,6 +18,7 @@ const MODE_PATHS = {
   welcome: "/",
   signin: "/sign-in",
   signup: "/sign-up",
+  forgotpassword: "/forgot-password",
   booking: "/book",
   history: "/my-rides",
   lookup: "/track",
@@ -603,6 +604,14 @@ export default function LuxRiBooking() {
   const [authReferralCode, setAuthReferralCode] = useState("");
   const [authStaffCode, setAuthStaffCode] = useState("");
   const [authAgreeTerms, setAuthAgreeTerms] = useState(false);
+  const [resetStep, setResetStep] = useState(0); // 0: enter email+phone, 1: set new password
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetPhone, setResetPhone] = useState("");
+  const [resetNewPassword, setResetNewPassword] = useState("");
+  const [resetConfirmPassword, setResetConfirmPassword] = useState("");
+  const [resetError, setResetError] = useState("");
+  const [resetBusy, setResetBusy] = useState(false);
+  const [resetAccount, setResetAccount] = useState(null);
   const [drivers, setDrivers] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [editingAccountEmail, setEditingAccountEmail] = useState(null);
@@ -1156,6 +1165,65 @@ export default function LuxRiBooking() {
       setAuthError("No account found with that email.");
     } finally {
       setAuthBusy(false);
+    }
+  };
+
+  const verifyResetIdentity = async () => {
+    setResetError("");
+    if (!resetEmail.trim() || !resetPhone.trim()) {
+      setResetError("Enter both your email and phone number.");
+      return;
+    }
+    setResetBusy(true);
+    try {
+      const res = await storage.get(`account:${normEmail(resetEmail)}`);
+      if (!res) {
+        setResetError("We couldn't find an account with that email.");
+        return;
+      }
+      const acct = JSON.parse(res.value);
+      const digitsOnly = (s) => (s || "").replace(/\D/g, "");
+      if (digitsOnly(acct.phone) !== digitsOnly(resetPhone)) {
+        setResetError("That phone number doesn't match what's on file for this account.");
+        return;
+      }
+      setResetAccount(acct);
+      setResetStep(1);
+    } catch {
+      setResetError("Something went wrong. Please try again.");
+    } finally {
+      setResetBusy(false);
+    }
+  };
+
+  const submitPasswordReset = async () => {
+    setResetError("");
+    if (!resetNewPassword || resetNewPassword.length < 6) {
+      setResetError("Password must be at least 6 characters.");
+      return;
+    }
+    if (resetNewPassword !== resetConfirmPassword) {
+      setResetError("Passwords don't match.");
+      return;
+    }
+    setResetBusy(true);
+    try {
+      const updated = { ...resetAccount, pass: simpleHash(resetNewPassword) };
+      await storage.set(`account:${resetAccount.email}`, JSON.stringify(updated));
+      setResetStep(0);
+      setResetEmail("");
+      setResetPhone("");
+      setResetNewPassword("");
+      setResetConfirmPassword("");
+      setResetAccount(null);
+      setAuthEmail(resetAccount.email);
+      setAuthPassword("");
+      setAuthError("");
+      navigate("signin");
+    } catch {
+      setResetError("Something went wrong saving your new password. Please try again.");
+    } finally {
+      setResetBusy(false);
     }
   };
 
@@ -2335,6 +2403,16 @@ export default function LuxRiBooking() {
             )}
             <Field placeholder="Email" value={authEmail} onChange={setAuthEmail} type="email" />
             <Field placeholder="Password" value={authPassword} onChange={setAuthPassword} type="password" />
+            {mode === "signin" && (
+              <button
+                type="button"
+                onClick={() => { setResetError(""); setResetStep(0); navigate("forgotpassword"); }}
+                className="text-[11px]"
+                style={{ color: C.gold }}
+              >
+                Forgot password?
+              </button>
+            )}
             {mode === "signup" && (
               <label className="flex items-start gap-2 text-[11px] pt-1" style={{ color: C.mutedDark }}>
                 <input
@@ -2375,6 +2453,72 @@ export default function LuxRiBooking() {
             </button>
             <button onClick={() => { setSignupFromNudge(false); navigate("welcome"); }} className="w-full text-xs tracking-wide" style={{ color: C.faintest }}>
               Back
+            </button>
+          </div>
+        )}
+
+        {mode === "forgotpassword" && (
+          <div
+            className="rounded-xl border p-6 sm:p-8 space-y-3 shadow-2xl shadow-black/50"
+            style={{ borderColor: C.panelBorder, background: C.panel, fontFamily: "'Inter', system-ui, sans-serif" }}
+          >
+            <div className="text-xs tracking-[0.15em] uppercase mb-1" style={{ color: C.mutedDark }}>
+              Reset Password
+            </div>
+            {resetStep === 0 && (
+              <>
+                <div className="text-sm mb-2" style={{ color: C.muted }}>
+                  Enter the email and phone number on your account to verify it's you.
+                </div>
+                <Field placeholder="Email" value={resetEmail} onChange={setResetEmail} type="email" />
+                <Field placeholder="Phone number" value={resetPhone} onChange={setResetPhone} type="tel" />
+                {resetError && <div className="text-sm" style={{ color: C.error }}>{resetError}</div>}
+                <button
+                  onClick={verifyResetIdentity}
+                  disabled={resetBusy}
+                  className="w-full py-2.5 rounded-xl text-sm tracking-wide disabled:opacity-40 flex items-center justify-center gap-1.5"
+                  style={{ background: goldGradient, color: C.bg }}
+                >
+                  {resetBusy ? (
+                    <>
+                      <Loader2 size={15} className="animate-spin" /> Verifying…
+                    </>
+                  ) : (
+                    "Continue"
+                  )}
+                </button>
+              </>
+            )}
+            {resetStep === 1 && (
+              <>
+                <div className="text-sm mb-2" style={{ color: C.muted }}>
+                  Set a new password for {resetAccount?.name}.
+                </div>
+                <Field placeholder="New password" value={resetNewPassword} onChange={setResetNewPassword} type="password" />
+                <Field placeholder="Confirm new password" value={resetConfirmPassword} onChange={setResetConfirmPassword} type="password" />
+                {resetError && <div className="text-sm" style={{ color: C.error }}>{resetError}</div>}
+                <button
+                  onClick={submitPasswordReset}
+                  disabled={resetBusy}
+                  className="w-full py-2.5 rounded-xl text-sm tracking-wide disabled:opacity-40 flex items-center justify-center gap-1.5"
+                  style={{ background: goldGradient, color: C.bg }}
+                >
+                  {resetBusy ? (
+                    <>
+                      <Loader2 size={15} className="animate-spin" /> Saving…
+                    </>
+                  ) : (
+                    "Set New Password"
+                  )}
+                </button>
+              </>
+            )}
+            <button
+              onClick={() => { setResetStep(0); setResetError(""); navigate("signin"); }}
+              className="w-full text-xs tracking-wide"
+              style={{ color: C.faintest }}
+            >
+              Back to Sign In
             </button>
           </div>
         )}
