@@ -1497,6 +1497,47 @@ export default function LuxRiBooking() {
     return { fare, discountAmount, effectiveFare, tipAmount, total };
   };
 
+  const [refreshingDiscount, setRefreshingDiscount] = useState(false);
+
+  const refreshPersonalDiscount = async (b) => {
+    if (!b.email) return;
+    setRefreshingDiscount(true);
+    try {
+      const res = await storage.get(`account:${normEmail(b.email)}`);
+      if (!res) {
+        window.alert("Couldn't find this customer's account.");
+        return;
+      }
+      const acct = JSON.parse(res.value);
+      const currentPct = acct.customDiscountPct || 0;
+      const hadPersonal = b.discountType === "personal";
+
+      if (currentPct <= 0 && !hadPersonal) {
+        window.alert("This customer has no personal discount on their account, and this ride doesn't have one either — nothing to update.");
+        return;
+      }
+
+      const nextBooking =
+        currentPct > 0
+          ? { ...b, discountType: "personal", personalDiscountPct: currentPct }
+          : { ...b, discountType: null, personalDiscountPct: 0, discountAmount: 0 };
+
+      const pricing = recomputeBookingPricing(nextBooking, b.tripType, b.vehicle, b.miles);
+      const updated = { ...nextBooking, ...pricing };
+      await storage.set(`booking:${b.code}`, JSON.stringify(updated));
+      setDashBookings((prev) => prev.map((x) => (x.code === b.code ? updated : x)));
+      window.alert(
+        currentPct > 0
+          ? `Updated to this customer's current personal rate: ${currentPct}%. New total: $${pricing.total.toFixed(2)}.`
+          : `This customer no longer has a personal discount — it's been removed from this ride. New total: $${pricing.total.toFixed(2)}.`
+      );
+    } catch {
+      window.alert("Something went wrong refreshing the discount. Please try again.");
+    } finally {
+      setRefreshingDiscount(false);
+    }
+  };
+
   const saveBookingEdit = async (b) => {
     if (!editDraft) return;
     setEditSaving(true);
@@ -2859,6 +2900,16 @@ export default function LuxRiBooking() {
                         New total: $
                         {recomputeBookingPricing(b, editDraft.tripType, editDraft.vehicle, editDraft.miles).total.toFixed(2)}
                       </div>
+                      {b.status === "confirmed" && !b.paid && b.email && (
+                        <button
+                          onClick={() => refreshPersonalDiscount(b)}
+                          disabled={refreshingDiscount}
+                          className="w-full py-1.5 rounded-xl text-[11px] border disabled:opacity-40"
+                          style={{ borderColor: C.border, color: C.mutedDark }}
+                        >
+                          {refreshingDiscount ? "Checking…" : "Refresh Personal Discount from Account"}
+                        </button>
+                      )}
                       <div className="grid grid-cols-3 gap-2">
                         <select
                           value={editDraft.vehicle}
