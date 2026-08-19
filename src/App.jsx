@@ -125,8 +125,8 @@ const VEHICLES = {
     seats: 5,
     color: "#B8912F",
     dark: "#221A08",
-    base: 19,
-    perMile: 5.75,
+    base: 18,
+    perMile: 5.50,
     airport: 55,
   },
 };
